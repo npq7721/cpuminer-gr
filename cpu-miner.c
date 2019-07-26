@@ -76,7 +76,7 @@
 
 algo_gate_t algo_gate;
 
-bool opt_debug = false;
+bool opt_debug = true;
 bool opt_debug_diff = false;
 bool opt_protocol = false;
 bool opt_benchmark = false;

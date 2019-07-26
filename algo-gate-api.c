@@ -172,15 +172,13 @@ bool register_algo_gate( int algo, algo_gate_t *gate )
     case ALGO_BLAKE2S:       register_blake2s_algo       ( gate ); break;
     case ALGO_BMW512:        register_bmw512_algo        ( gate ); break;
     case ALGO_C11:           register_c11_algo           ( gate ); break;
-    case ALGO_CRYPTOLIGHT:   register_cryptolight_algo   ( gate ); break;
-    case ALGO_CRYPTONIGHT:   register_cryptonight_algo   ( gate ); break;
-    case ALGO_CRYPTONIGHTV7: register_cryptonightv7_algo ( gate ); break;
     case ALGO_DECRED:        register_decred_algo        ( gate ); break;
     case ALGO_DEEP:          register_deep_algo          ( gate ); break;
     case ALGO_DMD_GR:        register_dmd_gr_algo        ( gate ); break;
     case ALGO_DROP:          register_drop_algo          ( gate ); break;
     case ALGO_FRESH:         register_fresh_algo         ( gate ); break;
     case ALGO_GROESTL:       register_groestl_algo       ( gate ); break;
+    case ALGO_GR:            register_gr_algo            ( gate ); break;
     case ALGO_HEAVY:         register_heavy_algo         ( gate ); break;
     case ALGO_HEX:           register_hex_algo           ( gate ); break;
     case ALGO_HMQ1725:       register_hmq1725_algo       ( gate ); break;
@@ -321,12 +319,11 @@ const char* const algo_alias_map[][2] =
   { "blake256r8vnl",     "vanilla"      },
   { "blake256r14",       "blake"        },
   { "blake256r14dcr",    "decred"       },
-  { "cryptonote",        "cryptonight"  },
-  { "cryptonight-light", "cryptolight"  },
   { "diamond",           "dmd-gr"       },
   { "droplp",            "drop"         },
   { "espers",            "hmq1725"      },
   { "flax",              "c11"          },
+  { "grhash",            "gr"           },
   { "hsr",               "x13sm3"       },
   { "jackpot",           "jha"          },
   { "jane",              "scryptjane"   }, 

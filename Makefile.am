@@ -27,9 +27,6 @@ cpuminer_SOURCES = \
   crypto/c_groestl.c \
   crypto/c_blake256.c \
   crypto/c_jh.c \
-  crypto/c_skein.c \
-  crypto/hash.c \
-  crypto/aesb.c \
   crypto/magimath.cpp \
   algo/argon2/argon2a/argon2a.c \
   algo/argon2/argon2a/ar2/argon2.c \
@@ -74,10 +71,6 @@ cpuminer_SOURCES = \
   algo/bmw/bmw512-gate.c \
   algo/bmw/bmw512.c \
   algo/bmw/bmw512-4way.c \
-  algo/cryptonight/cryptolight.c \
-  algo/cryptonight/cryptonight-common.c\
-  algo/cryptonight/cryptonight-aesni.c\
-  algo/cryptonight/cryptonight.c\
   algo/cubehash/sph_cubehash.c \
   algo/cubehash/cubehash_sse2.c\
   algo/cubehash/cube-hash-2way.c \
@@ -183,6 +176,18 @@ cpuminer_SOURCES = \
   algo/shavite/sph-shavite-aesni.c \
   algo/shavite/shavite-hash-2way.c \
   algo/shavite/shavite.c \
+  algo/gr/cryptonote/crypto/aesb.c \
+  algo/gr/cryptonote/crypto/hash.c \
+  algo/gr/cryptonote/crypto/c_skein.c \
+  algo/gr/cryptonote/cryptonight.c \
+  algo/gr/cryptonote/cryptonight_dark.c \
+  algo/gr/cryptonote/cryptonight_dark_lite.c \
+  algo/gr/cryptonote/cryptonight_fast.c \
+  algo/gr/cryptonote/cryptonight_lite.c \
+  algo/gr/cryptonote/cryptonight_soft_shell.c \
+  algo/gr/cryptonote/cryptonight_turtle.c \
+  algo/gr/cryptonote/cryptonight_turtle_lite.c \
+  algo/gr/gr-gate.c \
   algo/simd/sph_simd.c \
   algo/simd/nist.c \
   algo/simd/vector.c \

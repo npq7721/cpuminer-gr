@@ -516,15 +516,13 @@ enum algos {
         ALGO_BMW,        
         ALGO_BMW512,
         ALGO_C11,         
-        ALGO_CRYPTOLIGHT, 
-        ALGO_CRYPTONIGHT,
-        ALGO_CRYPTONIGHTV7, 
         ALGO_DECRED,
         ALGO_DEEP,
         ALGO_DMD_GR,
         ALGO_DROP,        
         ALGO_FRESH,       
-        ALGO_GROESTL,     
+        ALGO_GROESTL,
+	ALGO_GR,
         ALGO_HEAVY,
         ALGO_HEX,
         ALGO_HMQ1725,
@@ -610,15 +608,13 @@ static const char* const algo_names[] = {
         "bmw",
         "bmw512",
         "c11",
-        "cryptolight",
-        "cryptonight",
-        "cryptonightv7",
         "decred",
         "deep",
         "dmd-gr",
         "drop",
         "fresh",
         "groestl",
+	"gr",
         "heavy",
         "hex",
         "hmq1725",
@@ -766,15 +762,13 @@ Options:\n\
                           bmw           BMW 256\n\
                           bmw512        BMW 512\n\
                           c11           Chaincoin\n\
-                          cryptolight   Cryptonight-light\n\
-                          cryptonight   Cryptonote legacy\n\
-                          cryptonightv7 variant 7, Monero (XMR)\n\
                           decred        Blake256r14dcr\n\
                           deep          Deepcoin (DCN)\n\
                           dmd-gr        Diamond\n\
                           drop          Dropcoin\n\
                           fresh         Fresh\n\
                           groestl       Groestl coin\n\
+                          gr            Gr Hash\n\
                           heavy         Heavy\n\
                           hex           x16r-hex\n\
                           hmq1725       Espers\n\
