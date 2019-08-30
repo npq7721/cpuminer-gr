@@ -84,53 +84,50 @@ enum CNAlgo {
 	CN_HASH_FUNC_COUNT
 };
 
-static void getAlgoString(const uint8_t* prevblock, char *output, int algoCount)
-{
-	char *sptr = output;
-	int j;
-	bool selectedAlgo[algoCount];
-	for(int z=0; z < algoCount; z++) {
-	   selectedAlgo[z] = false;
+static void selectAlgo(unsigned char nibble, bool* selectedAlgos, uint8_t* selectedIndex, int algoCount, int* currentCount) {
+	uint8_t algoDigit = (nibble & 0x0F) % algoCount;
+	if(!selectedAlgos[algoDigit]) {
+		selectedAlgos[algoDigit] = true;
+		selectedIndex[currentCount[0]] = algoDigit;
+		currentCount[0] = currentCount[0] + 1;
 	}
-	int selectedCount = 0;
-	for (j = 0; j < 64; j++) {
-		char b = (63 - j) >> 1; // 64 ascii hex chars, reversed
-		uint8_t algoDigit = ((j & 1) ? prevblock[b] & 0xF : prevblock[b] >> 4) % algoCount;
-		if(!selectedAlgo[algoDigit]) {
-			selectedAlgo[algoDigit] = true;
+	algoDigit = (nibble >> 4) % algoCount;
+	if(!selectedAlgos[algoDigit]) {
+		selectedAlgos[algoDigit] = true;
+		selectedIndex[currentCount[0]] = algoDigit;
+		currentCount[0] = currentCount[0] + 1;
+	}
+}
+
+static void getAlgoString(void *mem, unsigned int size, uint8_t* selectedAlgoOutput, int algoCount) {
+  int i;
+  unsigned char *p = (unsigned char *)mem;
+  unsigned int len = size/2;
+  unsigned char j = 0;
+  bool selectedAlgo[algoCount];
+  for(int z=0; z < algoCount; z++) {
+	  selectedAlgo[z] = false;
+  }
+  int selectedCount = 0;
+  for (i=0;i<len; i++) {
+	  selectAlgo(p[i], selectedAlgo, selectedAlgoOutput, algoCount, &selectedCount);
+	  if(selectedCount == algoCount) {
+		  break;
+	  }
+  }
+  if(selectedCount < algoCount) {
+	for(uint8_t i = 0; i < algoCount; i++) {
+		if(!selectedAlgo[i]) {
+			selectedAlgoOutput[selectedCount] = i;
 			selectedCount++;
-		} else {
-			continue;
-		}
-		if(selectedCount == algoCount) {
-			break;
-		}
-		if (algoDigit >= 10)
-			sprintf(sptr, "%c", 'A' + (algoDigit - 10));
-		else
-			sprintf(sptr, "%u", (uint32_t) algoDigit);
-		sptr++;
-	}
-	if(selectedCount < algoCount) {
-		for(uint8_t i = 0; i < algoCount; i++) {
-			if(!selectedAlgo[i]) {
-				if (i >= 10)
-					sprintf(sptr, "%c", 'A' + (i - 10));
-				else
-					sprintf(sptr, "%u", (uint32_t) i);
-				sptr++;
-			}
 		}
 	}
-	*sptr = '\0';
+  }
 }
 
 void gr_hash(void* output, const void* input) {
 
 	uint32_t hash[64/4];
-	char hashOrder[16] = { 0};
-	char cnHashOrder[15] = { 0};
-
 	sph_blake512_context ctx_blake;
 	sph_bmw512_context ctx_bmw;
 	sph_groestl512_context ctx_groestl;
@@ -153,9 +150,10 @@ void gr_hash(void* output, const void* input) {
 
 	void *in = (void*) input;
 	int size = 80;
-
-	getAlgoString(&input[4], hashOrder, 15);
-	getAlgoString(&input[4], cnHashOrder, 14);
+	uint8_t selectedAlgoOutput[15] = {0};
+	uint8_t selectedCNAlgoOutput[14] = {0};
+	getAlgoString(&input[4], 64, selectedAlgoOutput, 15);
+	getAlgoString(&input[4], 64, selectedCNAlgoOutput, 14);
 	int i;
 	for (i = 0; i < 18; i++)
 	{
@@ -183,14 +181,12 @@ void gr_hash(void* output, const void* input) {
 			cnSelection = 2;
 		}
 		if(coreSelection >= 0) {
-			const char elem = hashOrder[coreSelection];
-			algo = elem >= 'A' ? elem - 'A' + 10 : elem - '0';
+			algo = selectedAlgoOutput[(uint8_t)coreSelection];
 		} else {
 			algo = 16; // skip core hashing for this loop iteration
 		}
 		if(cnSelection >=0) {
-			const char cnElem = cnHashOrder[cnSelection];
-			cnAlgo = cnElem >= 'A' ? cnElem - 'A' + 10 : cnElem - '0';
+			cnAlgo = selectedCNAlgoOutput[(uint8_t)cnSelection];
 		} else {
 			cnAlgo = 14; // skip cn hashing for this loop iteration
 		}
@@ -317,6 +313,9 @@ void gr_hash(void* output, const void* input) {
 				sph_whirlpool(&ctx_whirlpool, in, size);
 				sph_whirlpool_close(&ctx_whirlpool, hash);
 				break;
+		}
+		if(cnSelection >= 0) {
+			memset(&hash[8], 0, 32);
 		}
 		in = (void*) hash;
 		size = 64;
