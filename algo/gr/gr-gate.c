@@ -143,9 +143,9 @@ void gr_hash(void* output, const void* input) {
 	void *in = (void*) input;
 	int size = 80;
 	uint8_t selectedAlgoOutput[15] = {0};
-	uint8_t selectedCNAlgoOutput[14] = {0};
+	uint8_t selectedCNAlgoOutput[6] = {0};
 	getAlgoString(&input[4], 64, selectedAlgoOutput, 15);
-	getAlgoString(&input[4], 64, selectedCNAlgoOutput, 14);
+	getAlgoString(&input[4], 64, selectedCNAlgoOutput, 6);
 	int i;
 	for (i = 0; i < 18; i++)
 	{
