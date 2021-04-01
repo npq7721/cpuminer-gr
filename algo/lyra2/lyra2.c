@@ -21,7 +21,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <mm_malloc.h>
+// Replace mm_malloc.h with sse2neon.h
+#include "sse2neon.h" //#include <mm_malloc.h>
 #include "compat.h"
 #include "lyra2.h"
 #include "sponge.h"

@@ -160,32 +160,32 @@
 ///////////////////////////////////////////////////////
 
 #include <inttypes.h>
-#include <x86intrin.h>
+#include "sse2neon.h" //#include <x86intrin.h>
 #include <memory.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 // Various types and overlays
-#include "simd-utils/simd-types.h"
+//#include "simd-utils/simd-types.h"
 
 // 64 and 128 bit integers.
-#include "simd-utils/simd-int.h"
+//#include "simd-utils/simd-int.h"
 
 #if defined(__MMX__)
 
 // 64 bit vectors
-#include "simd-utils/simd-64.h"
+//#include "simd-utils/simd-64.h"
 //#include "simd-utils/intrlv-mmx.h"
 
 #if defined(__SSE2__)
 
 // 128 bit vectors
-#include "simd-utils/simd-128.h"
+//#include "simd-utils/simd-128.h"
 
 #if defined(__AVX__)
 
 // 256 bit vector basics
-#include "simd-utils/simd-256.h"
+//#include "simd-utils/simd-256.h"
 
 #if defined(__AVX2__)
 
@@ -193,7 +193,7 @@
 #if defined(__AVX512VL__) && defined(__AVX512DQ__) && defined(__AVX512BW__)
 
 // 512 bit vectors
-#include "simd-utils/simd-512.h"
+//#include "simd-utils/simd-512.h"
 
 #endif  // MMX
 #endif  // SSE2
@@ -201,6 +201,6 @@
 #endif  // AVX2
 #endif  // AVX512
 
-#include "simd-utils/intrlv.h"
+//#include "simd-utils/intrlv.h"
 
 #endif  // SIMD_UTILS_H__

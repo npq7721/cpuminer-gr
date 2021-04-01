@@ -1702,22 +1702,22 @@ static uint32_t getblocheight(struct stratum_ctx *sctx)
 static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 {
 	const char *job_id, *prevhash, *coinb1, *coinb2, *version, *nbits, *stime;
-   const char *denom10 = NULL, *denom100 = NULL, *denom1000 = NULL,
-              *denom10000 = NULL, *prooffullnode = NULL;
-   const char *extradata = NULL;
+//   const char *denom10 = NULL, *denom100 = NULL, *denom1000 = NULL,
+//              *denom10000 = NULL, *prooffullnode = NULL;
+//   const char *extradata = NULL;
 	size_t coinb1_size, coinb2_size;
 	bool clean, ret = false;
 	int merkle_count, i, p = 0;
 	json_t *merkle_arr;
 	uchar **merkle = NULL;
 	int jsize = json_array_size(params);
-   bool has_claim = ( opt_algo == ALGO_LBRY ) && ( jsize == 10 );
-   bool has_roots = ( opt_algo == ALGO_PHI2 ) && ( jsize == 10 );
-   bool is_veil  = ( opt_algo == ALGO_X16RT_VEIL );
+//   bool has_claim = ( opt_algo == ALGO_LBRY ) && ( jsize == 10 );
+//   bool has_roots = ( opt_algo == ALGO_PHI2 ) && ( jsize == 10 );
+//   bool is_veil  = ( opt_algo == ALGO_X16RT_VEIL );
 
    job_id = json_string_value(json_array_get(params, p++));
 	prevhash = json_string_value(json_array_get(params, p++));
-   if ( has_claim )
+/*   if ( has_claim )
    {
        extradata = json_string_value(json_array_get(params, p++));
        if ( !extradata || strlen( extradata ) != 64 ) 
@@ -1742,7 +1742,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
       denom1000 = json_string_value(json_array_get(params, p++));
       denom10000 = json_string_value(json_array_get(params, p++));
       prooffullnode = json_string_value(json_array_get(params, p++));
-   }
+   }*/
 
 	coinb1 = json_string_value(json_array_get(params, p++));
 	coinb2 = json_string_value(json_array_get(params, p++));
@@ -1762,7 +1762,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 		goto out;
 	}
 
-   if ( is_veil )
+/*   if ( is_veil )
    {
       if ( !denom10 || !denom100 || !denom1000 || !denom10000
         || !prooffullnode || strlen(denom10) != 64 || strlen(denom100) != 64
@@ -1772,7 +1772,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
          applog(LOG_ERR, "Stratum notify: invalid veil parameters");
          goto out;
       }
-   }
+   }*/
 
    if ( merkle_count )
       merkle = (uchar**) malloc(merkle_count * sizeof(char *));
@@ -1806,10 +1806,10 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
 	free(sctx->job.job_id);
 	sctx->job.job_id = strdup(job_id);
 	hex2bin(sctx->job.prevhash, prevhash, 32);
-        if (has_claim) hex2bin(sctx->job.extra, extradata, 32);
-        if (has_roots) hex2bin(sctx->job.extra, extradata, 64);
+//        if (has_claim) hex2bin(sctx->job.extra, extradata, 32);
+//        if (has_roots) hex2bin(sctx->job.extra, extradata, 64);
 
-   if ( is_veil )
+/*   if ( is_veil )
    {
       hex2bin(sctx->job.denom10, denom10, 32);
       hex2bin(sctx->job.denom100, denom100, 32);
@@ -1817,7 +1817,7 @@ static bool stratum_notify(struct stratum_ctx *sctx, json_t *params)
       hex2bin(sctx->job.denom10000, denom10000, 32);
       hex2bin(sctx->job.proofoffullnode, prooffullnode, 32);
    }
-
+*/
 	sctx->bloc_height = getblocheight(sctx);
 
 	for (i = 0; i < sctx->job.merkle_count; i++)

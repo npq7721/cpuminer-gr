@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include <immintrin.h>
+#include "sse2neon.h" //#include <immintrin.h>
 #include "sponge.h"
 #include "lyra2.h"
 
