@@ -28,7 +28,7 @@ and easy solution to port required functionality and make it work on ARM.
 
 Main modifications compared to the original release:
 simd-utils.h - use sse2neon. Disable most of the includes.
-algo/lyra2/sponge.c - use ss2neonź
+algo/lyra2/sponge.c - use sse2neon
 
 util.c - Remove mentions and variables used by X16, PHI2 and LBRY
 
