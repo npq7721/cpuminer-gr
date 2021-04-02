@@ -3294,15 +3294,14 @@ static int thread_create(struct thr_info *thr, void* func)
 static void show_credits()
 {
    printf("\n         **********  "PACKAGE_NAME" "PACKAGE_VERSION"  *********** \n");
-   printf("     A CPU miner with multi algo support and optimized for CPUs\n");
-   printf("     with AES_NI and AVX2 and SHA extensions.\n");
+   printf("     A CPU miner with GR algorithm and support for ARMs\n");
    printf("     BTC donation address: 12tdvfF7KmAsihBXQXynT6E6th2c2pByTT\n\n");
 }
 
 bool check_cpu_capability ()
 {
      char cpu_brand[0x40];
-     bool cpu_hw_arm = false;
+     bool cpu_hw_arm = true;
      bool cpu_has_sse2   = has_sse2();
      bool cpu_has_aes    = has_aes_ni();
      bool cpu_has_sse42  = has_sse42();
@@ -3349,15 +3348,6 @@ bool check_cpu_capability ()
      #ifdef __SHA__
          sw_has_sha = true;
      #endif
-     #ifdef __arm__
-	cpu_hw_arm = true;
-	printf("Using ARM %s processor!\n", __arm__);
-     #endif
-     #ifdef __aarch64__
-	cpu_hw_arm = true;
-	printf("Using ARM64 %s processor!\n", __aarch64__);
-     #endif
-
      #if !((__AES__) || (__SSE2__))
          printf("Neither __AES__ nor __SSE2__ defined.\n");
      #endif
