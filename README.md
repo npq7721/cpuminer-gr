@@ -63,10 +63,11 @@ strip -s cpuminer
 
 Tested Systems
 ------------
+```
 Hardware           System          Notes
 Raspberry Pi 3     Raspbian        32bit system.
 Raspberry Pi 4     Raspbian        32bit system. Even though CPU is ARMv8 capable, 32bit system, kernel and dependencies, it has to be compiled as ARMv7.
-
+```
 
 Note from Jay D Dee. repository
 ------------
