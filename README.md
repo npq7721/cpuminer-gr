@@ -27,12 +27,15 @@ sse2neon (https://github.com/DLTcollab/sse2neon) was used as an alternative
 and easy solution to port required functionality and make it work on ARM.
 
 Main modifications compared to the original release:
+
 simd-utils.h - use sse2neon. Disable most of the includes.
+
 algo/lyra2/sponge.c - use sse2neon
 
 util.c - Remove mentions and variables used by X16, PHI2 and LBRY
 
 miner.h - Remove mention of other algorithms.
+
 algo-gate-api.c - Remove mention of other algorithms.
 
 cpu-miner.c - Remove requirement for SSE2 check.
@@ -47,6 +50,7 @@ The most important information can be found in **INSTALL_LINUX** file.
 
 Example for Raspbian:
 1. Install depenencies:
+
 `sudo apt-get update && sudo apt-get install build-essential libssl-dev libcurl4-openssl-dev libjansson-dev libgmp-dev automake zlib1g-dev texinfo`
 2. Get a repository. Either zipped file or `git clone https://github.com/michal-zurkowski/cpuminer-gr`
 3. Build: The basic process is inside `build.sh` file and can also be used. You will have to choose one line depending on if you want to compile it as ARMv7 (default) or ARMv8.
@@ -65,9 +69,14 @@ Tested Systems
 ------------
 ```
 Hardware           System          Notes
-Raspberry Pi 3     Raspbian        32bit system.
-Raspberry Pi 4     Raspbian        32bit system. Even though CPU is ARMv8 capable, 32bit system, kernel and dependencies, it has to be compiled as ARMv7.
+Raspberry Pi 3     Raspbian        
+Raspberry Pi 4     Raspbian        See Troubleshooting section. Compiled as ARMv7.
 ```
+
+Troubleshooting
+------------
+Raspberry Pi 4     Raspbian
+There is an alignment problem with Raspberry Pi 4. To fix it run followinf command: `sudo echo 0 > /proc/cpu/alignment`
 
 Note from Jay D Dee. repository
 ------------
