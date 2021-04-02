@@ -21,7 +21,6 @@ dist_man_MANS	= cpuminer.1
 cpuminer_SOURCES = \
   cpu-miner.c \
   util.c \
-  uint256.cpp \
   api.c \
   sysinfos.c \
   algo-gate-api.c \
@@ -42,6 +41,9 @@ cpuminer_SOURCES = \
   algo/hamsi/sph_hamsi.c \
   algo/jh/sph_jh.c \
   algo/keccak/sph_keccak.c \
+  algo/keccak/keccak.c \
+  algo/keccak/keccak-gate.c \
+  algo/keccak/sha3d.c \
   algo/luffa/sph_luffa.c \
   algo/lyra2/lyra2.c \
   algo/lyra2/sponge.c \

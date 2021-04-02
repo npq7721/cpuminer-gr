@@ -13,7 +13,7 @@ rm -f config.status
 ./autogen.sh || echo done
 
 # For ARMv7-A
-CFLAGS="-O3 -march=armv7-a -mfpu=neon -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl
+CFLAGS="-Ofast -march=armv7-a -mfpu=neon -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++17" ./configure --with-curl
 
 # For ARMv8-A
 #CFLAGS="-O3 -march=armv8-a -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl

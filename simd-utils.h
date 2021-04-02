@@ -169,7 +169,7 @@
 //#include "simd-utils/simd-types.h"
 
 // 64 and 128 bit integers.
-//#include "simd-utils/simd-int.h"
+#include "simd-utils/simd-int.h"
 
 #if defined(__MMX__)
 
@@ -201,6 +201,6 @@
 #endif  // AVX2
 #endif  // AVX512
 
-//#include "simd-utils/intrlv.h"
+#include "simd-utils/intrlv.h"
 
 #endif  // SIMD_UTILS_H__

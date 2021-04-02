@@ -6,18 +6,6 @@
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 #define MAX_CPUS 16
 
-//#ifndef NO_AES_NI
- #ifndef __AES__
-  #define NO_AES_NI
- #endif
-//#endif
-
-//#if defined(FOUR_WAY) && defined(__AVX2__)
-// keep this until all algos remove reference to HASH_4WAY
-//#if defined(__AVX2__)
-//  #define HASH_4WAY
-//#endif
-
 #ifdef _MSC_VER
 
 #undef USE_ASM  /* to fix */
@@ -94,6 +82,8 @@ enum {
 	LOG_BLUE = 0x10,
 };
 #endif
+
+extern bool is_power_of_2( int n );
 
 static inline bool is_windows(void)
 {
@@ -310,6 +300,7 @@ struct thr_api {
 #define CL_WHT  "\x1B[01;37m" /* white */
 
 void   applog(int prio, const char *fmt, ...);
+void   applog2(int prio, const char *fmt, ...);
 void   restart_threads(void);
 extern json_t *json_rpc_call( CURL *curl, const char *url, const char *userpass,
                 	const char *rpc_req, int *curl_err, int flags );
@@ -323,16 +314,54 @@ int    varint_encode( unsigned char *p, uint64_t n );
 size_t address_to_script( unsigned char *out, size_t outsz, const char *addr );
 int    timeval_subtract( struct timeval *result, struct timeval *x,
                            struct timeval *y);
+
+// Segwit BEGIN
+extern void memrev(unsigned char *p, size_t len);
+// Segwit END
+
+// Bitcoin formula for converting difficulty to an equivalent
+// number of hashes.
+//
+//     https://en.bitcoin.it/wiki/Difficulty
+//
+//     hash = diff * 2**32
+//
+// diff_to_hash = 2**32 = 0x100000000 = 4294967296 = exp32;
+
+#define EXP16 65536.
+#define EXP32 4294967296.
+extern const long double exp32;  // 2**32
+extern const long double exp48;  // 2**48
+extern const long double exp64;  // 2**64
+extern const long double exp96;  // 2**96
+extern const long double exp128; // 2**128
+extern const long double exp160; // 2**160
+
 bool   fulltest( const uint32_t *hash, const uint32_t *target );
-void   work_set_target( struct work* work, double diff );
-double target_to_diff( uint32_t* target );
-extern void diff_to_target(uint32_t *target, double diff);
+bool   valid_hash( const void*, const void* );
+
+double hash_to_diff( const void* );
+extern void diff_to_hash( uint32_t*, const double );
 
 double hash_target_ratio( uint32_t* hash, uint32_t* target );
-void   work_set_target_ratio( struct work* work, uint32_t* hash );
+void   work_set_target_ratio( struct work* work, const void *hash );
 
+struct thr_info {
+        int id;
+        pthread_t pth;
+        pthread_attr_t attr;
+        struct thread_q *q;
+        struct cpu_info cpu;
+};
+
+//int test_hash_and_submit( struct work *work, const void *hash,
+//                           struct thr_info *thr );
+
+bool submit_solution( struct work *work, const void *hash,
+                      struct thr_info *thr );
 
 void   get_currentalgo( char* buf, int sz );
+/*
 bool   has_sha();
 bool   has_aes_ni();
 bool   has_avx1();
@@ -349,35 +378,30 @@ void   cpu_getmodelid(char *outbuf, size_t maxsz);
 void   cpu_brand_string( char* s );
 
 float cpu_temp( int core );
+*/
 
-struct work {
+struct work
+{
+   uint32_t target[8] __attribute__ ((aligned (64)));
 	uint32_t data[48] __attribute__ ((aligned (64)));
-	uint32_t target[8];
-
 	double targetdiff;
-	double shareratio;
 	double sharediff;
-
+   double stratum_diff;
 	int height;
 	char *txs;
 	char *workid;
-
 	char *job_id;
 	size_t xnonce2_len;
 	unsigned char *xnonce2;
-   // x16rt
-   uint32_t merkleroothash[8];
-   uint32_t witmerkleroothash[8];
-   uint32_t denom10[8];
-   uint32_t denom100[8];
-   uint32_t denom1000[8];
-   uint32_t denom10000[8];
-
+   bool sapling;
+   bool stale;
 } __attribute__ ((aligned (64)));
 
-struct stratum_job {
-	char *job_id;
+struct stratum_job
+{
 	unsigned char prevhash[32];
+   unsigned char final_sapling_hash[32];
+   char *job_id;
 	size_t coinbase_size;
 	unsigned char *coinbase;
 	unsigned char *xnonce2;
@@ -388,7 +412,7 @@ struct stratum_job {
 	unsigned char ntime[4];
 	double diff;
    bool clean;
-   // for x16rt
+   // for x16rt-veil
    unsigned char extra[64];
    unsigned char denom10[32];
    unsigned char denom100[32];
@@ -420,7 +444,8 @@ struct stratum_ctx {
 	struct work work __attribute__ ((aligned (64)));
 	pthread_mutex_t work_lock;
 
-	int bloc_height;
+   int block_height;
+   bool new_job;  
 } __attribute__ ((aligned (64)));
 
 bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);
@@ -432,25 +457,10 @@ bool stratum_subscribe(struct stratum_ctx *sctx);
 bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *pass);
 bool stratum_handle_method(struct stratum_ctx *sctx, const char *s);
 
-/* rpc 2.0 (xmr) */
 
-
-extern bool jsonrpc_2;
 extern bool aes_ni_supported;
-extern char rpc2_id[64];
-extern char *rpc2_blob;
-extern size_t rpc2_bloblen;
-extern uint32_t rpc2_target;
-extern char *rpc2_job_id;
 extern char *rpc_user;
 extern char *short_url;
-
-json_t *json_rpc2_call(CURL *curl, const char *url, const char *userpass, const char *rpc_req, int *curl_err, int flags);
-bool rpc2_login(CURL *curl);
-bool rpc2_login_decode(const json_t *val);
-bool rpc2_workio_login(CURL *curl);
-bool rpc2_stratum_job(struct stratum_ctx *sctx, json_t *params);
-bool rpc2_job_decode(const json_t *job, struct work *work);
 
 struct thread_q;
 
@@ -471,6 +481,9 @@ void print_hash_tests(void);
 
 void scale_hash_for_display ( double* hashrate, char* units );
 
+void report_summary_log( bool force );
+
+/*
 struct thr_info {
         int id;
         pthread_t pth;
@@ -478,6 +491,7 @@ struct thr_info {
         struct thread_q *q;
         struct cpu_info cpu;
 };
+*/
 
 struct work_restart {
         volatile uint8_t restart;
@@ -501,12 +515,12 @@ uint32_t* get_stratum_job_ntime();
 
 enum algos {
         ALGO_NULL,
-	ALGO_GR,
+        ALGO_GR,
         ALGO_COUNT
 };
 static const char* const algo_names[] = {
         NULL,
-	"gr",
+        "gr",
         "\0"
 };
 
@@ -517,7 +531,6 @@ extern bool opt_debug;
 extern bool opt_debug_diff;
 extern bool opt_benchmark;
 extern bool opt_protocol;
-extern bool opt_showdiff;
 extern bool opt_extranonce;
 extern bool opt_quiet;
 extern bool opt_redirect;
@@ -550,11 +563,14 @@ extern double global_hashrate;
 extern double stratum_diff;
 extern double net_diff;
 extern double net_hashrate;
-extern int opt_pluck_n;
-extern int opt_scrypt_n;
+extern int opt_param_n;
+extern int opt_param_r;
+extern char* opt_param_key;
 extern double opt_diff_factor;
+extern double opt_target_factor;
 extern bool opt_randomize;
 extern bool allow_mininginfo;
+extern pthread_rwlock_t g_work_lock;
 extern time_t g_work_time;
 extern bool opt_stratum_stats;
 extern int num_cpus;
@@ -564,18 +580,22 @@ extern bool opt_hash_meter;
 extern uint32_t accepted_share_count;
 extern uint32_t rejected_share_count;
 extern uint32_t solved_block_count;
-extern pthread_mutex_t rpc2_job_lock;
-extern pthread_mutex_t rpc2_login_lock;
 extern pthread_mutex_t applog_lock;
 extern pthread_mutex_t stats_lock;
-
+extern bool opt_sapling;
+extern const int pk_buffer_size_max;
+extern int pk_buffer_size;
+extern char *opt_data_file;
+extern bool opt_verify;
 
 static char const usage[] = "\
-Usage: " PACKAGE_NAME " [OPTIONS]\n\
+Usage: cpuminer [OPTIONS]\n\
 Options:\n\
   -a, --algo=ALGO       specify the algorithm to use\n\
-                          gr            Gr Hash\n\
-			\
+                          gr           Gr Hash\n\
+  -N, --param-n         N parameter for scrypt based algos\n\
+  -R, --param-r         R parameter for scrypt based algos\n\
+  -K, --param-key       Key (pers) parameter for algos that use it\n\
   -o, --url=URL         URL of mining server\n\
   -O, --userpass=U:P    username:password pair for mining server\n\
   -u, --user=USERNAME   username for mining server\n\
@@ -585,7 +605,7 @@ Options:\n\
   -t, --threads=N       number of miner threads (default: number of processors)\n\
   -r, --retries=N       number of times to retry if a network call fails\n\
                           (default: retry indefinitely)\n\
-  -R, --retry-pause=N   time to pause between retries, in seconds (default: 30)\n\
+      --retry-pause=N   time to pause between retries, in seconds (default: 30)\n\
       --time-limit=N    maximum time [s] to mine before exiting the program.\n\
   -T, --timeout=N       timeout for long poll and stratum (default: 300 seconds)\n\
   -s, --scantime=N      upper bound on time spent scanning current work when\n\
@@ -594,7 +614,6 @@ Options:\n\
   -f, --diff-factor     Divide req. difficulty by this factor (std is 1.0)\n\
   -m, --diff-multiplier Multiply difficulty by this factor (std is 1.0)\n\
       --hash-meter      Display thread hash rates\n\
-      --hide-diff       Do not display changes in difficulty\n\
       --coinbase-addr=ADDR  payout address for solo mining\n\
       --coinbase-sig=TEXT  data to insert in the coinbase when possible\n\
       --no-longpoll     disable long polling support\n\
@@ -614,7 +633,6 @@ Options:\n\
 "\
   -B, --background      run the miner in the background\n\
       --benchmark       run in offline benchmark mode\n\
-      --cputest         debug hashes from cpu algorithms\n\
       --cpu-affinity    set process affinity to cpu core(s), mask 0x3 for cores 0 and 1\n\
       --cpu-priority    set process priority (default: 0 idle, 2 normal to 5 highest)\n\
   -b, --api-bind        IP/Port for the miner API (default: 127.0.0.1:4048)\n\
@@ -623,6 +641,8 @@ Options:\n\
       --max-rate=N[KMG] Only mine if net hashrate is less than specified value\n\
       --max-diff=N      Only mine if net difficulty is less than specified value\n\
   -c, --config=FILE     load a JSON-format configuration file\n\
+      --data-file       path and name of data file\n\
+      --verify          enable additional time consuming start up tests\n\
   -V, --version         display version information and exit\n\
   -h, --help            display this help text and exit\n\
 ";
@@ -658,8 +678,8 @@ static struct option const options[] = {
         { "diff", 1, NULL, 'f' }, // deprecated (alias)
         { "diff-multiplier", 1, NULL, 'm' },
         { "hash-meter", 0, NULL, 1014 },
-        { "hide-diff", 0, NULL, 1013 },
         { "help", 0, NULL, 'h' },
+        { "key", 1, NULL, 'K' },
         { "no-gbt", 0, NULL, 1011 },
         { "no-getwork", 0, NULL, 1010 },
         { "no-longpoll", 0, NULL, 1003 },
@@ -669,13 +689,16 @@ static struct option const options[] = {
         { "max-temp", 1, NULL, 1060 },
         { "max-diff", 1, NULL, 1061 },
         { "max-rate", 1, NULL, 1062 },
+        { "param-key", 1, NULL, 'K' },
+        { "param-n", 1, NULL, 'N' },
+        { "param-r", 1, NULL, 'R' },
         { "pass", 1, NULL, 'p' },
         { "protocol", 0, NULL, 'P' },
         { "protocol-dump", 0, NULL, 'P' },
         { "proxy", 1, NULL, 'x' },
         { "quiet", 0, NULL, 'q' },
         { "retries", 1, NULL, 'r' },
-        { "retry-pause", 1, NULL, 'R' },
+        { "retry-pause", 1, NULL, 1025 },
         { "randomize", 0, NULL, 1024 },
         { "scantime", 1, NULL, 's' },
 #ifdef HAVE_SYSLOG_H
@@ -687,6 +710,8 @@ static struct option const options[] = {
         { "url", 1, NULL, 'o' },
         { "user", 1, NULL, 'u' },
         { "userpass", 1, NULL, 'O' },
+        { "data-file", 1, NULL, 1027 },
+        { "verify", 0, NULL, 1028 },
         { "version", 0, NULL, 'V' },
         { 0, 0, 0, 0 }
 };
