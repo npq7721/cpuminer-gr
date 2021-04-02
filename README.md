@@ -52,14 +52,20 @@ Example for Raspbian:
 3. Build: The basic process is inside `build.sh` file and can also be used. You will have to choose one line depending on if you want to compile it as ARMv7 (default) or ARMv8.
 ```
 ./autogen.sh
-------------- ARMv7 (ARM)
+-------------- ARMv7 (ARM)
 CFLAGS="-O3 -march=armv7-a -mfpu=neon -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl
 -------------- ARMv8 (Aarch64)
 CFLAGS="-O3 -march=armv8-a -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl
--------------- -march= can be changed if you have higher version like armv8.1-a and so on. Refferr to https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html
+-------------- -march= can be changed if you have higher version like armv8.1-a or armv8-a+fp+simd and so on. Refferr to https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html
 make -j 4
 strip -s cpuminer
 ```
+
+Tested Systems
+------------
+Hardware           System          Notes
+Raspberry Pi 3     Raspbian        32bit system.
+Raspberry Pi 4     Raspbian        32bit system. Even though CPU is ARMv8 capable, 32bit system, kernel and dependencies, it has to be compiled as ARMv7.
 
 
 Note from Jay D Dee. repository
