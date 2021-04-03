@@ -238,16 +238,18 @@ static void gr_bench(int type, int algo, void *input, double time) {
   double elapsed, hashrate, hashes = 0;
   char hr_units[4] = {4};
 
+  uint32_t _ALIGN(64) *endiandata = (uint32_t *) input;
+
   gettimeofday(&start, NULL);
   do {
-    be32enc(&input[19], hashes);
+    be32enc(&endiandata[19], hashes);
     uint32_t hash[64 / 4];
-    if (type == 0) {
-      doCoreAlgo(algo, input, hash, 64);
-    } else if (type == 1) {
-      doCNAlgo(algo, input, hash, 64);
+    if (type == 1) {
+      doCoreAlgo(algo, endiandata, hash, 64);
+    } else if (type == 0) {
+      doCNAlgo(algo, endiandata, hash, 64);
     } else {
-      gr_hash(hash, input);
+      gr_hash(hash, endiandata);
     }
     hashes++;
     gettimeofday(&end, NULL);

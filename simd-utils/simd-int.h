@@ -36,10 +36,9 @@
 #if ( __GNUC__ > 4 ) || ( ( __GNUC__ == 4 ) && ( __GNUC_MINOR__ >= 8 ) )
   #define GCC_INT128 1
 #endif
-#endif
-
 #if !defined(GCC_INT128)
   #warning "__int128 not supported, requires GCC-4.8 or newer."
+#endif
 #endif
 
 #if defined(GCC_INT128)
