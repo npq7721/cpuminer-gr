@@ -3,6 +3,7 @@ Code was stripped from any unnecessary algorithms and currently only
 supports Ghost Rider (gr, Raptoreum) algorithm.
 Algorithm removal was done to minimize size and reduce compilation time
 as it **should** be compiled locally to achieve the best performance possible.
+It also supports compilation with x86_64 architecture processors.
 
 
 Requirements
@@ -29,6 +30,9 @@ and easy solution to port required functionality and make it work on ARM.
 Main modifications compared to the original release:
 
 simd-utils.h - use sse2neon. Disable most of the includes.
+simd-utils/simd-int.h - Exclude \_\_int128 on ARM.
+
+algo/lyra2/lyra2.c
 
 algo/lyra2/sponge.c - use sse2neon
 
@@ -50,33 +54,28 @@ The most important information can be found in **INSTALL_LINUX** file.
 
 Example for Raspbian:
 1. Install depenencies:
-
-`sudo apt-get update && sudo apt-get install build-essential libssl-dev libcurl4-openssl-dev libjansson-dev libgmp-dev automake zlib1g-dev texinfo`
+`sudo apt-get update && sudo apt-get install build-essential libssl-dev libcurl4-openssl-dev libjansson-dev libgmp-dev automake zlib1g-dev texinfo git`
 2. Get a repository. Either zipped file or `git clone https://github.com/michal-zurkowski/cpuminer-gr`
-3. Build: The basic process is inside `build.sh` file and can also be used. You will have to choose one line depending on if you want to compile it as ARMv7 (default) or ARMv8.
+3. Build: The basic process is inside `build.sh` file and should work by itself as it contains simple logic about selecting proper configuration depending on the system architecture.
 ```
-./autogen.sh
--------------- ARMv7 (ARM)
-CFLAGS="-O3 -march=armv7-a -mfpu=neon -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl
--------------- ARMv8 (Aarch64)
-CFLAGS="-O3 -march=armv8-a -mtune=native -Wall" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl
--------------- -march= can be changed if you have higher version like armv8.1-a or armv8-a+fp+simd and so on. Refferr to https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html
-make -j 4
-strip -s cpuminer
+./build.sh
 ```
 
 Tested Systems
 ------------
 ```
 Hardware           System          Notes
-Raspberry Pi 3     Raspbian        
+Raspberry Pi 3     Raspbian        32bit system.
 Raspberry Pi 4     Raspbian        See Troubleshooting section. Compiled as ARMv7.
 ```
 
 Troubleshooting
 ------------
 Raspberry Pi 4     Raspbian
-There is an alignment problem with Raspberry Pi 4. To fix it run followinf command: `sudo echo 0 > /proc/cpu/alignment`
+Problems with alignments can occur and give `Bus error`. Posible solutions:
+1. To fix it run followinf command: `sudo echo "0" > /proc/cpu/alignment`
+2. Switch from SD card to USB drive.
+
 
 Note from Jay D Dee. repository
 ------------
