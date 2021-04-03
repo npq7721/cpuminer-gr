@@ -233,24 +233,27 @@ static void doCoreAlgo(uint8_t algo, void *in, void *hash, int size) {
   }
 }
 
-static void gr_bench(int type, int algo, void *input, double time) {
+static const uint8_t cc[20][3] = {
+    {0, 1, 2}, {0, 1, 3}, {0, 1, 4}, {0, 1, 5}, {0, 2, 3}, {0, 2, 4}, {0, 2, 5},
+    {0, 3, 4}, {0, 3, 5}, {0, 4, 5}, {1, 2, 3}, {1, 2, 4}, {1, 2, 5}, {1, 3, 4},
+    {1, 3, 5}, {1, 4, 5}, {2, 3, 4}, {2, 3, 5}, {2, 4, 5}, {3, 4, 5}};
+
+static void gr_bench(int type, int algo, void *input, double time, int cn) {
   struct timeval start, end, diff;
   double elapsed, hashrate, hashes = 0;
   char hr_units[4] = {4};
 
-  uint32_t _ALIGN(64) *endiandata = (uint32_t *)input;
-
   gettimeofday(&start, NULL);
   do {
-    be32enc(&endiandata[19], hashes);
     uint32_t hash[64 / 4];
     if (type == 1) {
-      doCoreAlgo(algo, endiandata, hash, 64);
+      doCoreAlgo(algo, input, hash, 64);
     } else if (type == 0) {
-      doCNAlgo(algo, endiandata, hash, 64);
+      doCNAlgo(algo, input, hash, 64);
     } else {
-      gr_hash(hash, endiandata);
+      gr_hash(hash, input, cn);
     }
+
     hashes++;
     gettimeofday(&end, NULL);
     timeval_subtract(&diff, &end, &start);
@@ -274,41 +277,62 @@ static void gr_bench(int type, int algo, void *input, double time) {
 static void gr_extensive_bench(void *input, int thr_id) {
   if (opt_n_threads == 1) {
     int i;
-    applog(LOG_BLUE, "Testing Cryptonight algorithms (15s per algorithm)");
+    applog(LOG_BLUE, "Testing Cryptonight algorithms (10s per algorithm)");
     for (i = 0; i < 6; i++) {
-      gr_bench(0, i, input, 5.0);
+      gr_bench(0, i, input, 10.0, 0);
     }
     applog(LOG_BLUE, "Testing Core algorithms (2s per algorithm)");
     for (i = 0; i < 15; i++) {
-      gr_bench(1, i, input, 1.0);
+      gr_bench(1, i, input, 2.0, 0);
     }
   }
+  double intervals = 30.;
   if (thr_id == 0) {
-    applog(LOG_BLUE, "Testing everything (10s intervals)");
+    applog(LOG_BLUE, "Testing everything (%.0lfs intervals)", intervals);
   }
-  static int counter = 0;
-  while (true) {
-    gr_bench(2, -1, input, 10);
-    pthread_mutex_lock(&stats_lock);
-    counter++;
-    pthread_mutex_unlock(&stats_lock);
+  static int rot = 0;
+  double total_hashes = 0;
+  double total_time = 0;
+  while (rot < 20) {
+    gr_bench(2, -1, input, 0.25, rot);
 
     // Only one thread will post stats.
-    if (thr_id == 0) {
+    if (thr_id == 0 && gr_bench_time > intervals * opt_n_threads) {
       double hashrate;
       char hr_units[4] = {0};
-
+      applog(LOG_BLUE, "Rotation %d %d %d", cc[rot][0], cc[rot][1], cc[rot][2]);
+      rot++;
       pthread_mutex_lock(&stats_lock);
       hashrate = gr_bench_hashes / gr_bench_time * opt_n_threads;
       scale_hash_for_display(&hashrate, hr_units);
-      applog(LOG_BLUE, "Hashrate:\t%.3lf %sH/s (%.0lfs)", hashrate, hr_units,
-             gr_bench_time / opt_n_threads);
+      applog(LOG_BLUE,
+             "Hashrate: \t%.1lf %sH/s (%.0lfs)\t-> %.2lf %sH/s per thread.",
+             hashrate, hr_units, gr_bench_time / opt_n_threads,
+             hashrate / opt_n_threads, hr_units);
+      total_hashes += gr_bench_hashes;
+      total_time += gr_bench_time;
+      gr_bench_hashes = 0.;
+      gr_bench_time = 0.;
       pthread_mutex_unlock(&stats_lock);
     }
   }
+  // Only one thread will post stats.
+  if (thr_id == 0) {
+    double hashrate;
+    char hr_units[4] = {0};
+    pthread_mutex_lock(&stats_lock);
+    hashrate = total_hashes / total_time * opt_n_threads;
+    scale_hash_for_display(&hashrate, hr_units);
+    applog(LOG_BLUE,
+           "Hashrate (Avg):\t%.1lf %sH/s (%.0lfs)\t-> %.2lf %sH/s per thread.",
+           hashrate, hr_units, total_time / opt_n_threads,
+           hashrate / opt_n_threads, hr_units);
+    pthread_mutex_unlock(&stats_lock);
+  }
+  exit(0);
 }
 
-void gr_hash(void *output, const void *input) {
+void gr_hash(void *output, const void *input, uint8_t cn) {
   void *hash_1 = (void *)malloc(64);
   void *hash_2 = (void *)malloc(64);
 
@@ -316,7 +340,13 @@ void gr_hash(void *output, const void *input) {
   uint8_t selectedCNAlgoOutput[6] = {0};
 
   getAlgoString(&input[4], 64, selectedAlgoOutput, 15);
-  getAlgoString(&input[4], 64, selectedCNAlgoOutput, 6);
+  if (cn > 19) {
+    getAlgoString(&input[4], 64, selectedCNAlgoOutput, 6);
+  } else {
+    selectedCNAlgoOutput[0] = cc[cn][0];
+    selectedCNAlgoOutput[1] = cc[cn][1];
+    selectedCNAlgoOutput[2] = cc[cn][2];
+  }
 
   // First phasee uses full 80 bytes. Ther rest usees shorter 64 bytes.
   doCoreAlgo(selectedAlgoOutput[0], input, hash_1, 80);
@@ -359,18 +389,20 @@ int scanhash_gr(struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
   uint32_t nonce = first_nonce;
   int thr_id = mythr->id;
 
-  swab32_array(endiandata, pdata, 20);
-
   if (opt_benchmark) {
-    diff_to_hash(ptarget, 0.001 / opt_target_factor);
     gr_extensive_bench(endiandata, thr_id);
+    return 0;
   }
+
+  swab32_array(endiandata, pdata, 20);
 
   uint32_t hash[8];
   const uint32_t Htarg = ptarget[7];
   do {
     be32enc(&endiandata[19], nonce);
-    gr_hash(hash, endiandata);
+
+    gr_hash(hash, endiandata, 0xFF);
+
     if (hash[7] <= Htarg) {
       pdata[19] = nonce;
       *hashes_done = pdata[19] - first_nonce;

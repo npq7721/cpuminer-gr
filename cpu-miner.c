@@ -159,7 +159,7 @@ double opt_diff_factor = 1.0;
 double opt_target_factor = 1.0;
 uint32_t zr5_pok = 0;
 bool opt_stratum_stats = false;
-bool opt_hash_meter = true;
+bool opt_hash_meter = false;
 uint32_t submitted_share_count = 0;
 uint32_t accepted_share_count = 0;
 uint32_t rejected_share_count = 0;
@@ -2128,7 +2128,9 @@ static void *miner_thread(void *userdata) {
             goto out;
           }
           g_work_time = time(NULL);
-          restart_threads();
+          if (!opt_benchmark) {
+            restart_threads();
+          }
         }
 
         pthread_rwlock_unlock(&g_work_lock);
