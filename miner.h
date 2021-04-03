@@ -8,7 +8,7 @@
 
 #ifdef _MSC_VER
 
-#undef USE_ASM  /* to fix */
+#undef USE_ASM /* to fix */
 
 #ifdef NOASM
 #undef USE_ASM
@@ -24,28 +24,28 @@
 
 #endif /* _MSC_VER */
 
-#include <stdbool.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <sys/time.h>
 
-#include <pthread.h>
-#include <jansson.h>
 #include <curl/curl.h>
+#include <jansson.h>
+#include <pthread.h>
 
 #ifdef STDC_HEADERS
-# include <stdlib.h>
-# include <stddef.h>
+#include <stddef.h>
+#include <stdlib.h>
 #else
-# ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
 #endif
 
 /*
 #ifndef min
 #define min(a,b) (a>b ? (b) :(a))
 #endif
-#ifndef max 
+#ifndef max
 #define max(a,b) (a<b ? (b) : (a))
 #endif
 */
@@ -53,19 +53,19 @@
 //#ifdef HAVE_ALLOCA_H
 //# include <alloca.h>
 //#elif !defined alloca
-# ifdef __GNUC__
+#ifdef __GNUC__
 //#  define alloca __builtin_alloca
-# elif defined _AIX
-#  define alloca __alloca
-# elif defined _MSC_VER
-#  include <malloc.h>
-#  define alloca _alloca
-# elif !defined HAVE_ALLOCA
-#  ifdef  __cplusplus
+#elif defined _AIX
+#define alloca __alloca
+#elif defined _MSC_VER
+#include <malloc.h>
+#define alloca _alloca
+#elif !defined HAVE_ALLOCA
+#ifdef __cplusplus
 extern "C"
-#  endif
-void *alloca (size_t);
-# endif
+#endif
+    void *alloca(size_t);
+#endif
 //#endif
 
 #ifdef HAVE_SYSLOG_H
@@ -73,27 +73,26 @@ void *alloca (size_t);
 #define LOG_BLUE 0x10 /* unique value */
 #else
 enum {
-	LOG_ERR,
-	LOG_WARNING,
-	LOG_NOTICE,
-	LOG_INFO,
-	LOG_DEBUG,
-	/* custom notices */
-	LOG_BLUE = 0x10,
+  LOG_ERR,
+  LOG_WARNING,
+  LOG_NOTICE,
+  LOG_INFO,
+  LOG_DEBUG,
+  /* custom notices */
+  LOG_BLUE = 0x10,
 };
 #endif
 
-extern bool is_power_of_2( int n );
+extern bool is_power_of_2(int n);
 
-static inline bool is_windows(void)
-{
+static inline bool is_windows(void) {
 #ifdef WIN32
-	return true;
+  return true;
 #else
-	return false;
+  return false;
 #endif
 }
- 
+
 #include "compat.h"
 
 #ifndef ARRAY_SIZE
@@ -103,21 +102,24 @@ static inline bool is_windows(void)
 #if ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 3))
 #define WANT_BUILTIN_BSWAP
 #else
-#define bswap_32(x) ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) \
-                   | (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))
+#define bswap_32(x)                                                            \
+  ((((x) << 24) & 0xff000000u) | (((x) << 8) & 0x00ff0000u) |                  \
+   (((x) >> 8) & 0x0000ff00u) | (((x) >> 24) & 0x000000ffu))
 #endif
 
-static inline uint32_t swab32(uint32_t v)
-{
+static inline uint32_t swab32(uint32_t v) {
 #ifdef WANT_BUILTIN_BSWAP
-	return __builtin_bswap32(v);
+  return __builtin_bswap32(v);
 #else
-	return bswap_32(v);
+  return bswap_32(v);
 #endif
 }
 
 // Swap any two variables of the same type without using a temp
-#define swap_vars(a,b) a^=b; b^=a; a^=b;
+#define swap_vars(a, b)                                                        \
+  a ^= b;                                                                      \
+  b ^= a;                                                                      \
+  a ^= b;
 
 #ifdef HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
@@ -126,31 +128,28 @@ static inline uint32_t swab32(uint32_t v)
 typedef unsigned char uchar;
 
 #if !HAVE_DECL_BE32DEC
-static inline uint32_t be32dec(const void *pp)
-{
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[3]) + ((uint32_t)(p[2]) << 8) +
-	    ((uint32_t)(p[1]) << 16) + ((uint32_t)(p[0]) << 24));
+static inline uint32_t be32dec(const void *pp) {
+  const uint8_t *p = (uint8_t const *)pp;
+  return ((uint32_t)(p[3]) + ((uint32_t)(p[2]) << 8) +
+          ((uint32_t)(p[1]) << 16) + ((uint32_t)(p[0]) << 24));
 }
 #endif
 
 #if !HAVE_DECL_LE32DEC
-static inline uint32_t le32dec(const void *pp)
-{
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
-	    ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
+static inline uint32_t le32dec(const void *pp) {
+  const uint8_t *p = (uint8_t const *)pp;
+  return ((uint32_t)(p[0]) + ((uint32_t)(p[1]) << 8) +
+          ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
 }
 #endif
 
 #if !HAVE_DECL_BE32ENC
-static inline void be32enc(void *pp, uint32_t x)
-{
-	uint8_t *p = (uint8_t *)pp;
-	p[3] = x & 0xff;
-	p[2] = (x >> 8) & 0xff;
-	p[1] = (x >> 16) & 0xff;
-	p[0] = (x >> 24) & 0xff;
+static inline void be32enc(void *pp, uint32_t x) {
+  uint8_t *p = (uint8_t *)pp;
+  p[3] = x & 0xff;
+  p[2] = (x >> 8) & 0xff;
+  p[1] = (x >> 16) & 0xff;
+  p[0] = (x >> 24) & 0xff;
 }
 #endif
 
@@ -159,48 +158,42 @@ static inline void be32enc(void *pp, uint32_t x)
 // This is a poorman's SIMD instruction, use 64 bit instruction to encode 2
 // uint32_t. This function flips endian on two adjacent 32 bit quantities
 // aligned to 64 bits. If source is LE output is BE, and vice versa.
-static inline void swab32_x2( uint64_t* dst, uint64_t src )
-{
-   *dst =   ( ( src & 0xff000000ff000000 ) >> 24 )
-          | ( ( src & 0x00ff000000ff0000 ) >>  8 )
-          | ( ( src & 0x0000ff000000ff00 ) <<  8 )
-          | ( ( src & 0x000000ff000000ff ) << 24 );
+static inline void swab32_x2(uint64_t *dst, uint64_t src) {
+  *dst = ((src & 0xff000000ff000000) >> 24) |
+         ((src & 0x00ff000000ff0000) >> 8) | ((src & 0x0000ff000000ff00) << 8) |
+         ((src & 0x000000ff000000ff) << 24);
 }
 
-static inline void swab32_array( uint32_t* dst_p, uint32_t* src_p, int n )
-{
-   // Assumes source is LE
-   for ( int i=0; i < n/2; i++ )
-      swab32_x2( &((uint64_t*)dst_p)[i], ((uint64_t*)src_p)[i] );
-//   if ( n % 2 )
-//      be32enc( &dst_p[ n-1 ], src_p[ n-1 ] );
+static inline void swab32_array(uint32_t *dst_p, uint32_t *src_p, int n) {
+  // Assumes source is LE
+  for (int i = 0; i < n / 2; i++)
+    swab32_x2(&((uint64_t *)dst_p)[i], ((uint64_t *)src_p)[i]);
+  //   if ( n % 2 )
+  //      be32enc( &dst_p[ n-1 ], src_p[ n-1 ] );
 }
 
 #if !HAVE_DECL_LE32ENC
-static inline void le32enc(void *pp, uint32_t x)
-{
-	uint8_t *p = (uint8_t *)pp;
-	p[0] = x & 0xff;
-	p[1] = (x >> 8) & 0xff;
-	p[2] = (x >> 16) & 0xff;
-	p[3] = (x >> 24) & 0xff;
+static inline void le32enc(void *pp, uint32_t x) {
+  uint8_t *p = (uint8_t *)pp;
+  p[0] = x & 0xff;
+  p[1] = (x >> 8) & 0xff;
+  p[2] = (x >> 16) & 0xff;
+  p[3] = (x >> 24) & 0xff;
 }
 #endif
 
 #if !HAVE_DECL_LE16DEC
-static inline uint16_t le16dec(const void *pp)
-{
-	const uint8_t *p = (uint8_t const *)pp;
-	return ((uint16_t)(p[0]) + ((uint16_t)(p[1]) << 8));
+static inline uint16_t le16dec(const void *pp) {
+  const uint8_t *p = (uint8_t const *)pp;
+  return ((uint16_t)(p[0]) + ((uint16_t)(p[1]) << 8));
 }
 #endif
 
 #if !HAVE_DECL_LE16ENC
-static inline void le16enc(void *pp, uint16_t x)
-{
-	uint8_t *p = (uint8_t *)pp;
-	p[0] = x & 0xff;
-	p[1] = (x >> 8) & 0xff;
+static inline void le16enc(void *pp, uint16_t x) {
+  uint8_t *p = (uint8_t *)pp;
+  p[0] = x & 0xff;
+  p[1] = (x >> 8) & 0xff;
 }
 #endif
 
@@ -212,7 +205,7 @@ static inline void le16enc(void *pp, uint16_t x)
 #define JSON_LOADF(path, err_ptr) json_load_file(path, err_ptr)
 #endif
 
-json_t* json_load_url(char* cfg_url, json_error_t *err);
+json_t *json_load_url(char *cfg_url, json_error_t *err);
 
 void sha256_init(uint32_t *state);
 void sha256_transform(uint32_t *state, const uint32_t *block, int swap);
@@ -238,82 +231,78 @@ struct work;
 void work_free(struct work *w);
 void work_copy(struct work *dest, const struct work *src);
 
-
-
 /* api related */
 void *api_thread(void *userdata);
 
 struct cpu_info {
-	int thr_id;
-	int accepted;
-	int rejected;
-	double khashes;
-	bool has_monitoring;
-	float cpu_temp;
-	int cpu_fan;
-	uint32_t cpu_clock;
+  int thr_id;
+  int accepted;
+  int rejected;
+  double khashes;
+  bool has_monitoring;
+  float cpu_temp;
+  int cpu_fan;
+  uint32_t cpu_clock;
 };
 
 struct thr_api {
-	int id;
-	pthread_t pth;
-	struct thread_q	*q;
+  int id;
+  pthread_t pth;
+  struct thread_q *q;
 };
 /* end of api */
 
-
-#define JSON_RPC_LONGPOLL	(1 << 0)
-#define JSON_RPC_QUIET_404	(1 << 1)
-#define JSON_RPC_IGNOREERR  (1 << 2)
+#define JSON_RPC_LONGPOLL (1 << 0)
+#define JSON_RPC_QUIET_404 (1 << 1)
+#define JSON_RPC_IGNOREERR (1 << 2)
 
 #define JSON_BUF_LEN 512
 
-#define CL_N    "\x1B[0m"
-#define CL_RED  "\x1B[31m"
-#define CL_GRN  "\x1B[32m"
-#define CL_YLW  "\x1B[33m"
-#define CL_BLU  "\x1B[34m"
-#define CL_MAG  "\x1B[35m"
-#define CL_CYN  "\x1B[36m"
+#define CL_N "\x1B[0m"
+#define CL_RED "\x1B[31m"
+#define CL_GRN "\x1B[32m"
+#define CL_YLW "\x1B[33m"
+#define CL_BLU "\x1B[34m"
+#define CL_MAG "\x1B[35m"
+#define CL_CYN "\x1B[36m"
 
-#define CL_BLK  "\x1B[22;30m" /* black */
-#define CL_RD2  "\x1B[22;31m" /* red */
-#define CL_GR2  "\x1B[22;32m" /* green */
-#define CL_BRW  "\x1B[22;33m" /* brown */
-#define CL_BL2  "\x1B[22;34m" /* blue */
-#define CL_MA2  "\x1B[22;35m" /* magenta */
-#define CL_CY2  "\x1B[22;36m" /* cyan */
-#define CL_SIL  "\x1B[22;37m" /* gray */
+#define CL_BLK "\x1B[22;30m" /* black */
+#define CL_RD2 "\x1B[22;31m" /* red */
+#define CL_GR2 "\x1B[22;32m" /* green */
+#define CL_BRW "\x1B[22;33m" /* brown */
+#define CL_BL2 "\x1B[22;34m" /* blue */
+#define CL_MA2 "\x1B[22;35m" /* magenta */
+#define CL_CY2 "\x1B[22;36m" /* cyan */
+#define CL_SIL "\x1B[22;37m" /* gray */
 
 #ifdef WIN32
-#define CL_GRY  "\x1B[01;30m" /* dark gray */
+#define CL_GRY "\x1B[01;30m" /* dark gray */
 #else
-#define CL_GRY  "\x1B[90m"    /* dark gray selectable in putty */
+#define CL_GRY "\x1B[90m" /* dark gray selectable in putty */
 #endif
-#define CL_LRD  "\x1B[01;31m" /* light red */
-#define CL_LGR  "\x1B[01;32m" /* light green */
-#define CL_YL2  "\x1B[01;33m" /* yellow */
-#define CL_LBL  "\x1B[01;34m" /* light blue */
-#define CL_LMA  "\x1B[01;35m" /* light magenta */
-#define CL_LCY  "\x1B[01;36m" /* light cyan */
+#define CL_LRD "\x1B[01;31m" /* light red */
+#define CL_LGR "\x1B[01;32m" /* light green */
+#define CL_YL2 "\x1B[01;33m" /* yellow */
+#define CL_LBL "\x1B[01;34m" /* light blue */
+#define CL_LMA "\x1B[01;35m" /* light magenta */
+#define CL_LCY "\x1B[01;36m" /* light cyan */
 
-#define CL_WHT  "\x1B[01;37m" /* white */
+#define CL_WHT "\x1B[01;37m" /* white */
 
-void   applog(int prio, const char *fmt, ...);
-void   applog2(int prio, const char *fmt, ...);
-void   restart_threads(void);
-extern json_t *json_rpc_call( CURL *curl, const char *url, const char *userpass,
-                	const char *rpc_req, int *curl_err, int flags );
+void applog(int prio, const char *fmt, ...);
+void applog2(int prio, const char *fmt, ...);
+void restart_threads(void);
+extern json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass,
+                             const char *rpc_req, int *curl_err, int flags);
 extern void cbin2hex(char *out, const char *in, size_t len);
-void   bin2hex( char *s, const unsigned char *p, size_t len );
-char  *abin2hex( const unsigned char *p, size_t len );
-bool   hex2bin( unsigned char *p, const char *hexstr, size_t len );
-bool   jobj_binary( const json_t *obj, const char *key, void *buf,
-                    size_t buflen );
-int    varint_encode( unsigned char *p, uint64_t n );
-size_t address_to_script( unsigned char *out, size_t outsz, const char *addr );
-int    timeval_subtract( struct timeval *result, struct timeval *x,
-                           struct timeval *y);
+void bin2hex(char *s, const unsigned char *p, size_t len);
+char *abin2hex(const unsigned char *p, size_t len);
+bool hex2bin(unsigned char *p, const char *hexstr, size_t len);
+bool jobj_binary(const json_t *obj, const char *key, void *buf, size_t buflen);
+int varint_encode(unsigned char *p, uint64_t n);
+size_t address_to_script(unsigned char *out, size_t outsz, const char *addr);
+int timeval_subtract(struct timeval *result, struct timeval *x,
+                     struct timeval *y);
 
 // Segwit BEGIN
 extern void memrev(unsigned char *p, size_t len);
@@ -337,30 +326,29 @@ extern const long double exp96;  // 2**96
 extern const long double exp128; // 2**128
 extern const long double exp160; // 2**160
 
-bool   fulltest( const uint32_t *hash, const uint32_t *target );
-bool   valid_hash( const void*, const void* );
+bool fulltest(const uint32_t *hash, const uint32_t *target);
+bool valid_hash(const void *, const void *);
 
-double hash_to_diff( const void* );
-extern void diff_to_hash( uint32_t*, const double );
+double hash_to_diff(const void *);
+extern void diff_to_hash(uint32_t *, const double);
 
-double hash_target_ratio( uint32_t* hash, uint32_t* target );
-void   work_set_target_ratio( struct work* work, const void *hash );
+double hash_target_ratio(uint32_t *hash, uint32_t *target);
+void work_set_target_ratio(struct work *work, const void *hash);
 
 struct thr_info {
-        int id;
-        pthread_t pth;
-        pthread_attr_t attr;
-        struct thread_q *q;
-        struct cpu_info cpu;
+  int id;
+  pthread_t pth;
+  pthread_attr_t attr;
+  struct thread_q *q;
+  struct cpu_info cpu;
 };
 
-//int test_hash_and_submit( struct work *work, const void *hash,
+// int test_hash_and_submit( struct work *work, const void *hash,
 //                           struct thr_info *thr );
 
-bool submit_solution( struct work *work, const void *hash,
-                      struct thr_info *thr );
+bool submit_solution(struct work *work, const void *hash, struct thr_info *thr);
 
-void   get_currentalgo( char* buf, int sz );
+void get_currentalgo(char *buf, int sz);
 /*
 bool   has_sha();
 bool   has_aes_ni();
@@ -380,73 +368,71 @@ void   cpu_brand_string( char* s );
 float cpu_temp( int core );
 */
 
-struct work
-{
-   uint32_t target[8] __attribute__ ((aligned (64)));
-	uint32_t data[48] __attribute__ ((aligned (64)));
-	double targetdiff;
-	double sharediff;
-   double stratum_diff;
-	int height;
-	char *txs;
-	char *workid;
-	char *job_id;
-	size_t xnonce2_len;
-	unsigned char *xnonce2;
-   bool sapling;
-   bool stale;
-} __attribute__ ((aligned (64)));
+struct work {
+  uint32_t target[8] __attribute__((aligned(64)));
+  uint32_t data[48] __attribute__((aligned(64)));
+  double targetdiff;
+  double sharediff;
+  double stratum_diff;
+  int height;
+  char *txs;
+  char *workid;
+  char *job_id;
+  size_t xnonce2_len;
+  unsigned char *xnonce2;
+  bool sapling;
+  bool stale;
+} __attribute__((aligned(64)));
 
-struct stratum_job
-{
-	unsigned char prevhash[32];
-   unsigned char final_sapling_hash[32];
-   char *job_id;
-	size_t coinbase_size;
-	unsigned char *coinbase;
-	unsigned char *xnonce2;
-	int merkle_count;
-	unsigned char **merkle;
-	unsigned char version[4];
-	unsigned char nbits[4];
-	unsigned char ntime[4];
-	double diff;
-   bool clean;
-   // for x16rt-veil
-   unsigned char extra[64];
-   unsigned char denom10[32];
-   unsigned char denom100[32];
-   unsigned char denom1000[32];
-   unsigned char denom10000[32];
-   unsigned char proofoffullnode[32];
+struct stratum_job {
+  unsigned char prevhash[32];
+  unsigned char final_sapling_hash[32];
+  char *job_id;
+  size_t coinbase_size;
+  unsigned char *coinbase;
+  unsigned char *xnonce2;
+  int merkle_count;
+  unsigned char **merkle;
+  unsigned char version[4];
+  unsigned char nbits[4];
+  unsigned char ntime[4];
+  double diff;
+  bool clean;
+  // for x16rt-veil
+  unsigned char extra[64];
+  unsigned char denom10[32];
+  unsigned char denom100[32];
+  unsigned char denom1000[32];
+  unsigned char denom10000[32];
+  unsigned char proofoffullnode[32];
 
-} __attribute__ ((aligned (64)));
+} __attribute__((aligned(64)));
 
 struct stratum_ctx {
-	char *url;
+  char *url;
 
-	CURL *curl;
-	char *curl_url;
-	char curl_err_str[CURL_ERROR_SIZE];
-	curl_socket_t sock;
-	size_t sockbuf_size;
-	char *sockbuf;
-	pthread_mutex_t sock_lock;
+  CURL *curl;
+  char *curl_url;
+  char curl_err_str[CURL_ERROR_SIZE];
+  curl_socket_t sock;
+  size_t sockbuf_size;
+  char *sockbuf;
+  pthread_mutex_t sock_lock;
 
-	double next_diff;
-	double sharediff;
+  double next_diff;
+  double sharediff;
 
-	char *session_id;
-	size_t xnonce1_size;
-	unsigned char *xnonce1;
-	size_t xnonce2_size;
-	struct stratum_job job;
-	struct work work __attribute__ ((aligned (64)));
-	pthread_mutex_t work_lock;
+  char *session_id;
+  size_t xnonce1_size;
+  unsigned char *xnonce1;
+  size_t xnonce2_size;
+  struct stratum_job job;
+  struct work work __attribute__((aligned(64)));
+  pthread_mutex_t work_lock;
 
-   int block_height;
-   bool new_job;  
-} __attribute__ ((aligned (64)));
+  int block_height;
+  bool new_job;
+} __attribute__((aligned(64)));
 
 bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);
 bool stratum_send_line(struct stratum_ctx *sctx, char *s);
@@ -454,9 +440,9 @@ char *stratum_recv_line(struct stratum_ctx *sctx);
 bool stratum_connect(struct stratum_ctx *sctx, const char *url);
 void stratum_disconnect(struct stratum_ctx *sctx);
 bool stratum_subscribe(struct stratum_ctx *sctx);
-bool stratum_authorize(struct stratum_ctx *sctx, const char *user, const char *pass);
+bool stratum_authorize(struct stratum_ctx *sctx, const char *user,
+                       const char *pass);
 bool stratum_handle_method(struct stratum_ctx *sctx, const char *s);
-
 
 extern bool aes_ni_supported;
 extern char *rpc_user;
@@ -479,9 +465,9 @@ void applog_hash(void *hash);
 void format_hashrate(double hashrate, char *output);
 void print_hash_tests(void);
 
-void scale_hash_for_display ( double* hashrate, char* units );
+void scale_hash_for_display(double *hashrate, char *units);
 
-void report_summary_log( bool force );
+void report_summary_log(bool force);
 
 /*
 struct thr_info {
@@ -494,37 +480,29 @@ struct thr_info {
 */
 
 struct work_restart {
-        volatile uint8_t restart;
-        char padding[128 - sizeof(uint8_t)];
+  volatile uint8_t restart;
+  char padding[128 - sizeof(uint8_t)];
 };
 
 enum workio_commands {
-        WC_GET_WORK,
-        WC_SUBMIT_WORK,
+  WC_GET_WORK,
+  WC_SUBMIT_WORK,
 };
 
 struct workio_cmd {
-        enum workio_commands cmd;
-        struct thr_info *thr;
-        union {
-                struct work *work;
-        } u;
+  enum workio_commands cmd;
+  struct thr_info *thr;
+  union {
+    struct work *work;
+  } u;
 };
 
-uint32_t* get_stratum_job_ntime();
+uint32_t *get_stratum_job_ntime();
 
-enum algos {
-        ALGO_NULL,
-        ALGO_GR,
-        ALGO_COUNT
-};
-static const char* const algo_names[] = {
-        NULL,
-        "gr",
-        "\0"
-};
+enum algos { ALGO_NULL, ALGO_GR, ALGO_COUNT };
+static const char *const algo_names[] = {NULL, "gr", "\0"};
 
-const char* algo_name( enum algos a );
+const char *algo_name(enum algos a);
 
 extern enum algos opt_algo;
 extern bool opt_debug;
@@ -538,7 +516,7 @@ extern int opt_timeout;
 extern bool want_longpoll;
 extern bool have_longpoll;
 extern bool have_gbt;
-extern char*  lp_id;
+extern char *lp_id;
 extern char *rpc_userpass;
 extern const char *gbt_lp_req;
 extern const char *getwork_req;
@@ -565,7 +543,7 @@ extern double net_diff;
 extern double net_hashrate;
 extern int opt_param_n;
 extern int opt_param_r;
-extern char* opt_param_key;
+extern char *opt_param_key;
 extern double opt_diff_factor;
 extern double opt_target_factor;
 extern bool opt_randomize;
@@ -627,10 +605,10 @@ Options:\n\
   -D, --debug           enable debug output\n\
   -P, --protocol-dump   verbose dump of protocol-level activities\n"
 #ifdef HAVE_SYSLOG_H
-"\
+                            "\
   -S, --syslog          use system log for output messages\n"
 #endif
-"\
+                            "\
   -B, --background      run the miner in the background\n\
       --benchmark       run in offline benchmark mode\n\
       --cpu-affinity    set process affinity to cpu core(s), mask 0x3 for cores 0 and 1\n\
@@ -651,71 +629,67 @@ Options:\n\
 #include <getopt.h>
 #else
 struct option {
-        const char *name;
-        int has_arg;
-        int *flag;
-        int val;
+  const char *name;
+  int has_arg;
+  int *flag;
+  int val;
 };
 #endif
-
 
 static struct option const options[] = {
-        { "algo", 1, NULL, 'a' },
-        { "api-bind", 1, NULL, 'b' },
-        { "api-remote", 0, NULL, 1030 },
-        { "background", 0, NULL, 'B' },
-        { "benchmark", 0, NULL, 1005 },
-        { "cputest", 0, NULL, 1006 },
-        { "cert", 1, NULL, 1001 },
-        { "coinbase-addr", 1, NULL, 1016 },
-        { "coinbase-sig", 1, NULL, 1015 },
-        { "config", 1, NULL, 'c' },
-        { "cpu-affinity", 1, NULL, 1020 },
-        { "cpu-priority", 1, NULL, 1021 },
-        { "no-color", 0, NULL, 1002 },
-        { "debug", 0, NULL, 'D' },
-        { "diff-factor", 1, NULL, 'f' },
-        { "diff", 1, NULL, 'f' }, // deprecated (alias)
-        { "diff-multiplier", 1, NULL, 'm' },
-        { "hash-meter", 0, NULL, 1014 },
-        { "help", 0, NULL, 'h' },
-        { "key", 1, NULL, 'K' },
-        { "no-gbt", 0, NULL, 1011 },
-        { "no-getwork", 0, NULL, 1010 },
-        { "no-longpoll", 0, NULL, 1003 },
-        { "no-redirect", 0, NULL, 1009 },
-        { "no-stratum", 0, NULL, 1007 },
-        { "no-extranonce", 0, NULL, 1012 },
-        { "max-temp", 1, NULL, 1060 },
-        { "max-diff", 1, NULL, 1061 },
-        { "max-rate", 1, NULL, 1062 },
-        { "param-key", 1, NULL, 'K' },
-        { "param-n", 1, NULL, 'N' },
-        { "param-r", 1, NULL, 'R' },
-        { "pass", 1, NULL, 'p' },
-        { "protocol", 0, NULL, 'P' },
-        { "protocol-dump", 0, NULL, 'P' },
-        { "proxy", 1, NULL, 'x' },
-        { "quiet", 0, NULL, 'q' },
-        { "retries", 1, NULL, 'r' },
-        { "retry-pause", 1, NULL, 1025 },
-        { "randomize", 0, NULL, 1024 },
-        { "scantime", 1, NULL, 's' },
+    {"algo", 1, NULL, 'a'},
+    {"api-bind", 1, NULL, 'b'},
+    {"api-remote", 0, NULL, 1030},
+    {"background", 0, NULL, 'B'},
+    {"benchmark", 0, NULL, 1005},
+    {"cputest", 0, NULL, 1006},
+    {"cert", 1, NULL, 1001},
+    {"coinbase-addr", 1, NULL, 1016},
+    {"coinbase-sig", 1, NULL, 1015},
+    {"config", 1, NULL, 'c'},
+    {"cpu-affinity", 1, NULL, 1020},
+    {"cpu-priority", 1, NULL, 1021},
+    {"no-color", 0, NULL, 1002},
+    {"debug", 0, NULL, 'D'},
+    {"diff-factor", 1, NULL, 'f'},
+    {"diff", 1, NULL, 'f'}, // deprecated (alias)
+    {"diff-multiplier", 1, NULL, 'm'},
+    {"hash-meter", 0, NULL, 1014},
+    {"help", 0, NULL, 'h'},
+    {"key", 1, NULL, 'K'},
+    {"no-gbt", 0, NULL, 1011},
+    {"no-getwork", 0, NULL, 1010},
+    {"no-longpoll", 0, NULL, 1003},
+    {"no-redirect", 0, NULL, 1009},
+    {"no-stratum", 0, NULL, 1007},
+    {"no-extranonce", 0, NULL, 1012},
+    {"max-temp", 1, NULL, 1060},
+    {"max-diff", 1, NULL, 1061},
+    {"max-rate", 1, NULL, 1062},
+    {"param-key", 1, NULL, 'K'},
+    {"param-n", 1, NULL, 'N'},
+    {"param-r", 1, NULL, 'R'},
+    {"pass", 1, NULL, 'p'},
+    {"protocol", 0, NULL, 'P'},
+    {"protocol-dump", 0, NULL, 'P'},
+    {"proxy", 1, NULL, 'x'},
+    {"quiet", 0, NULL, 'q'},
+    {"retries", 1, NULL, 'r'},
+    {"retry-pause", 1, NULL, 1025},
+    {"randomize", 0, NULL, 1024},
+    {"scantime", 1, NULL, 's'},
 #ifdef HAVE_SYSLOG_H
-        { "syslog", 0, NULL, 'S' },
+    {"syslog", 0, NULL, 'S'},
 #endif
-        { "time-limit", 1, NULL, 1008 },
-        { "threads", 1, NULL, 't' },
-        { "timeout", 1, NULL, 'T' },
-        { "url", 1, NULL, 'o' },
-        { "user", 1, NULL, 'u' },
-        { "userpass", 1, NULL, 'O' },
-        { "data-file", 1, NULL, 1027 },
-        { "verify", 0, NULL, 1028 },
-        { "version", 0, NULL, 'V' },
-        { 0, 0, 0, 0 }
-};
-
+    {"time-limit", 1, NULL, 1008},
+    {"threads", 1, NULL, 't'},
+    {"timeout", 1, NULL, 'T'},
+    {"url", 1, NULL, 'o'},
+    {"user", 1, NULL, 'u'},
+    {"userpass", 1, NULL, 'O'},
+    {"data-file", 1, NULL, 1027},
+    {"verify", 0, NULL, 1028},
+    {"version", 0, NULL, 'V'},
+    {0, 0, 0, 0}};
 
 #endif /* __MINER_H__ */
-
