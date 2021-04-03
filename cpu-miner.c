@@ -1972,6 +1972,8 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *g_work) {
         scale_hash_for_display(&hr, hr_units);
         applog2(LOG_INFO, "TTF @ %.2f %sh/s: Block %s, Share %s", hr, hr_units,
                 block_ttf, share_ttf);
+        applog2(LOG_BLUE, "Stratum Diff %g, Block %d, Job %s", sctx->job.diff,
+                sctx->block_height, g_work->job_id);
 
         if (!multipool && last_block_height > session_first_block) {
           struct timeval now, et;

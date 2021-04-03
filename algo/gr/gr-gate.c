@@ -240,6 +240,7 @@ static void gr_bench(int type, int algo, void *input, double time) {
 
   gettimeofday(&start, NULL);
   do {
+    be32enc(&input[19], hashes);
     uint32_t hash[64 / 4];
     if (type == 0) {
       doCoreAlgo(algo, input, hash, 64);
@@ -268,7 +269,7 @@ static void gr_bench(int type, int algo, void *input, double time) {
 }
 
 static void gr_extensive_bench(void *input, int thr_id) {
-  if (opt_n_threads == 0) {
+  if (opt_n_threads == 1) {
     int i;
     applog(LOG_BLUE, "Testing Cryptonight algorithms (15s per algorithm)");
     for (i = 0; i < 6; i++) {
@@ -359,13 +360,11 @@ int scanhash_gr(struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
 
   if (opt_benchmark) {
     diff_to_hash(ptarget, 0.001 / opt_target_factor);
-    be32enc(&endiandata[19], 0);
     gr_extensive_bench(endiandata, thr_id);
   }
 
   uint32_t hash[8];
   const uint32_t Htarg = ptarget[7];
-  ;
   do {
     be32enc(&endiandata[19], nonce);
     gr_hash(hash, endiandata);
