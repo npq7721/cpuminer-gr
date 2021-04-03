@@ -21,7 +21,6 @@ dist_man_MANS	= cpuminer.1
 cpuminer_SOURCES = \
   cpu-miner.c \
   util.c \
-  uint256.cpp \
   api.c \
   sysinfos.c \
   algo-gate-api.c \
@@ -36,19 +35,25 @@ cpuminer_SOURCES = \
   algo/cubehash/sph_cubehash.c \
   algo/echo/sph_echo.c \
   algo/echo/aes_ni/hash.c\
-  algo/gost/sph_gost.c \
   algo/groestl/sph_groestl.c \
   algo/fugue/sph_fugue.c \
   algo/hamsi/sph_hamsi.c \
   algo/jh/sph_jh.c \
   algo/keccak/sph_keccak.c \
+  algo/keccak/keccak.c \
+  algo/keccak/keccak-gate.c \
+  algo/keccak/keccak-4way.c \
+  algo/keccak/keccak-hash-4way.c \
+  algo/keccak/sha3d.c \
+  algo/keccak/sha3d-4way.c \
   algo/luffa/sph_luffa.c \
   algo/lyra2/lyra2.c \
   algo/lyra2/sponge.c \
-  algo/haval/haval.c \
+  algo/sha/aes_helper.c \
   algo/sha/sph_sha2.c \
   algo/sha/sph_sha2big.c \
   algo/sha/sha2.c \
+  algo/sha/sha256-hash-opt.c \
   algo/shabal/sph_shabal.c \
   algo/shavite/sph_shavite.c \
   algo/shavite/sph-shavite-aesni.c \
@@ -66,7 +71,6 @@ cpuminer_SOURCES = \
   algo/gr/gr-gate.c \
   algo/simd/sph_simd.c \
   algo/skein/sph_skein.c \
-  algo/tiger/sph_tiger.c \
   algo/whirlpool/sph_whirlpool.c
 
 disable_flags =
