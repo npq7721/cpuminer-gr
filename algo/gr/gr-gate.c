@@ -238,7 +238,7 @@ static void gr_bench(int type, int algo, void *input, double time) {
   double elapsed, hashrate, hashes = 0;
   char hr_units[4] = {4};
 
-  uint32_t _ALIGN(64) *endiandata = (uint32_t *) input;
+  uint32_t _ALIGN(64) *endiandata = (uint32_t *)input;
 
   gettimeofday(&start, NULL);
   do {
@@ -257,15 +257,16 @@ static void gr_bench(int type, int algo, void *input, double time) {
     elapsed = (double)diff.tv_sec + (double)diff.tv_usec / 1e6;
   } while (elapsed <= time);
 
-  pthread_mutex_lock(&stats_lock);
-  gr_bench_hashes += hashes;
-  gr_bench_time += elapsed;
-  pthread_mutex_unlock(&stats_lock);
-
-  hashrate = hashes / elapsed;
-  scale_hash_for_display(&hashrate, hr_units);
+  if (type == 2) {
+    pthread_mutex_lock(&stats_lock);
+    gr_bench_hashes += hashes;
+    gr_bench_time += elapsed;
+    pthread_mutex_unlock(&stats_lock);
+  }
 
   if (type != 2) {
+    hashrate = hashes / elapsed;
+    scale_hash_for_display(&hashrate, hr_units);
     applog(LOG_BLUE, "Type %d\t->\t%.3lf %sH/s", algo, hashrate, hr_units);
   }
 }
