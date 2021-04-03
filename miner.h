@@ -565,6 +565,8 @@ extern const int pk_buffer_size_max;
 extern int pk_buffer_size;
 extern char *opt_data_file;
 extern bool opt_verify;
+extern double gr_bench_hashes;
+extern double gr_bench_time;
 
 static char const usage[] = "\
 Usage: cpuminer [OPTIONS]\n\

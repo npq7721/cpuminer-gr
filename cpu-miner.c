@@ -159,7 +159,7 @@ double opt_diff_factor = 1.0;
 double opt_target_factor = 1.0;
 uint32_t zr5_pok = 0;
 bool opt_stratum_stats = false;
-bool opt_hash_meter = false;
+bool opt_hash_meter = true;
 uint32_t submitted_share_count = 0;
 uint32_t accepted_share_count = 0;
 uint32_t rejected_share_count = 0;
@@ -172,6 +172,8 @@ double net_diff = 0.;
 double net_hashrate = 0.;
 uint64_t net_blocks = 0;
 uint32_t opt_work_size = 0;
+double gr_bench_hashes = 0.;
+double gr_bench_time = 0.;
 
 // conditional mining
 bool conditional_state[MAX_CPUS] = {0};
@@ -2858,7 +2860,7 @@ void show_usage_and_exit(int status) {
   if (status)
     fprintf(stderr, "Try `--help' for more information.\n");
   //		fprintf(stderr, "Try `" PACKAGE_NAME " --help' for more
-  //information.\n");
+  // information.\n");
   else
     printf(usage);
   exit(status);

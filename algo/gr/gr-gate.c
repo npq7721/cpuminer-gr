@@ -4,10 +4,8 @@
 #include "../cubehash/sph_cubehash.h"
 #include "../echo/sph_echo.h"
 #include "../fugue/sph_fugue.h"
-#include "../gost/sph_gost.h"
 #include "../groestl/sph_groestl.h"
 #include "../hamsi/sph_hamsi.h"
-#include "../haval/sph-haval.h"
 #include "../jh/sph_jh.h"
 #include "../keccak/sph_keccak.h"
 #include "../luffa/sph_luffa.h"
@@ -17,8 +15,9 @@
 #include "../shavite/sph_shavite.h"
 #include "../simd/sph_simd.h"
 #include "../skein/sph_skein.h"
-#include "../tiger/sph_tiger.h"
 #include "../whirlpool/sph_whirlpool.h"
+#include "cryptonote/crypto/c_keccak.h"
+#include "cryptonote/crypto/hash.h"
 #include "cryptonote/cryptonight.h"
 #include "cryptonote/cryptonight_dark.h"
 #include "cryptonote/cryptonight_dark_lite.h"
@@ -94,7 +93,6 @@ static void getAlgoString(void *mem, unsigned int size,
   int i;
   unsigned char *p = (unsigned char *)mem;
   unsigned int len = size / 2;
-  unsigned char j = 0;
   bool selectedAlgo[algoCount];
   for (int z = 0; z < algoCount; z++) {
     selectedAlgo[z] = false;
@@ -117,177 +115,234 @@ static void getAlgoString(void *mem, unsigned int size,
   }
 }
 
+static void doCNAlgo(uint8_t algo, void *in, void *hash, int size) {
+  switch (algo) {
+  case CNDark:
+    cryptonightdark_hash(in, hash, size, 1);
+    break;
+  case CNDarklite:
+    cryptonightdarklite_hash(in, hash, size, 1);
+    break;
+  case CNFast:
+    cryptonightfast_hash(in, hash, size, 1);
+    break;
+  case CNLite:
+    cryptonightlite_hash(in, hash, size, 1);
+    break;
+  case CNTurtle:
+    cryptonightturtle_hash(in, hash, size, 1);
+    break;
+  case CNTurtlelite:
+    cryptonightturtlelite_hash(in, hash, size, 1);
+    break;
+  }
+}
+
+static void doCoreAlgo(uint8_t algo, void *in, void *hash, int size) {
+  switch (algo) {
+  case BLAKE:;
+    sph_blake512_context ctx_blake;
+    sph_blake512_init(&ctx_blake);
+    sph_blake512(&ctx_blake, in, size);
+    sph_blake512_close(&ctx_blake, hash);
+    break;
+  case BMW:;
+    sph_bmw512_context ctx_bmw;
+    sph_bmw512_init(&ctx_bmw);
+    sph_bmw512(&ctx_bmw, in, size);
+    sph_bmw512_close(&ctx_bmw, hash);
+    break;
+  case GROESTL:;
+    sph_groestl512_context ctx_groestl;
+    sph_groestl512_init(&ctx_groestl);
+    sph_groestl512(&ctx_groestl, in, size);
+    sph_groestl512_close(&ctx_groestl, hash);
+    break;
+  case SKEIN:;
+    sph_skein512_context ctx_skein;
+    sph_skein512_init(&ctx_skein);
+    sph_skein512(&ctx_skein, in, size);
+    sph_skein512_close(&ctx_skein, hash);
+    break;
+  case JH:;
+    sph_jh512_context ctx_jh;
+    sph_jh512_init(&ctx_jh);
+    sph_jh512(&ctx_jh, in, size);
+    sph_jh512_close(&ctx_jh, hash);
+    break;
+  case KECCAK:;
+    sph_keccak512_context ctx_keccak;
+    sph_keccak512_init(&ctx_keccak);
+    sph_keccak512(&ctx_keccak, in, size);
+    sph_keccak512_close(&ctx_keccak, hash);
+    break;
+  case LUFFA:;
+    sph_luffa512_context ctx_luffa;
+    sph_luffa512_init(&ctx_luffa);
+    sph_luffa512(&ctx_luffa, in, size);
+    sph_luffa512_close(&ctx_luffa, hash);
+    break;
+  case CUBEHASH:;
+    sph_cubehash512_context ctx_cubehash;
+    sph_cubehash512_init(&ctx_cubehash);
+    sph_cubehash512(&ctx_cubehash, in, size);
+    sph_cubehash512_close(&ctx_cubehash, hash);
+    break;
+  case SHAVITE:;
+    sph_shavite512_context ctx_shavite;
+    sph_shavite512_init(&ctx_shavite);
+    sph_shavite512(&ctx_shavite, in, size);
+    sph_shavite512_close(&ctx_shavite, hash);
+    break;
+  case SIMD:;
+    sph_simd512_context ctx_simd;
+    sph_simd512_init(&ctx_simd);
+    sph_simd512(&ctx_simd, in, size);
+    sph_simd512_close(&ctx_simd, hash);
+    break;
+  case ECHO:;
+    sph_echo512_context ctx_echo;
+    sph_echo512_init(&ctx_echo);
+    sph_echo512(&ctx_echo, in, size);
+    sph_echo512_close(&ctx_echo, hash);
+    break;
+  case HAMSI:;
+    sph_hamsi512_context ctx_hamsi;
+    sph_hamsi512_init(&ctx_hamsi);
+    sph_hamsi512(&ctx_hamsi, in, size);
+    sph_hamsi512_close(&ctx_hamsi, hash);
+    break;
+  case FUGUE:;
+    sph_fugue512_context ctx_fugue;
+    sph_fugue512_init(&ctx_fugue);
+    sph_fugue512(&ctx_fugue, in, size);
+    sph_fugue512_close(&ctx_fugue, hash);
+    break;
+  case SHABAL:;
+    sph_shabal512_context ctx_shabal;
+    sph_shabal512_init(&ctx_shabal);
+    sph_shabal512(&ctx_shabal, in, size);
+    sph_shabal512_close(&ctx_shabal, hash);
+    break;
+  case WHIRLPOOL:;
+    sph_whirlpool_context ctx_whirlpool;
+    sph_whirlpool_init(&ctx_whirlpool);
+    sph_whirlpool(&ctx_whirlpool, in, size);
+    sph_whirlpool_close(&ctx_whirlpool, hash);
+    break;
+  }
+}
+
+static void gr_bench(int type, int algo, void *input, double time) {
+  struct timeval start, end, diff;
+  double elapsed, hashrate, hashes = 0;
+  char hr_units[4] = {4};
+
+  gettimeofday(&start, NULL);
+  do {
+    uint32_t hash[64 / 4];
+    if (type == 0) {
+      doCoreAlgo(algo, input, hash, 64);
+    } else if (type == 1) {
+      doCNAlgo(algo, input, hash, 64);
+    } else {
+      gr_hash(hash, input);
+    }
+    hashes++;
+    gettimeofday(&end, NULL);
+    timeval_subtract(&diff, &end, &start);
+    elapsed = (double)diff.tv_sec + (double)diff.tv_usec / 1e6;
+  } while (elapsed <= time);
+
+  pthread_mutex_lock(&stats_lock);
+  gr_bench_hashes += hashes;
+  gr_bench_time += elapsed;
+  pthread_mutex_unlock(&stats_lock);
+
+  hashrate = hashes / elapsed;
+  scale_hash_for_display(&hashrate, hr_units);
+
+  if (type != 2) {
+    applog(LOG_BLUE, "Type %d\t->\t%.3lf %sH/s", algo, hashrate, hr_units);
+  }
+}
+
+static void gr_extensive_bench(void *input, int thr_id) {
+  if (opt_n_threads == 0) {
+    int i;
+    applog(LOG_BLUE, "Testing Cryptonight algorithms (15s per algorithm)");
+    for (i = 0; i < 6; i++) {
+      gr_bench(0, i, input, 5.0);
+    }
+    applog(LOG_BLUE, "Testing Core algorithms (2s per algorithm)");
+    for (i = 0; i < 15; i++) {
+      gr_bench(1, i, input, 1.0);
+    }
+  }
+  if (thr_id == 0) {
+    applog(LOG_BLUE, "Testing everything (10s intervals)");
+  }
+  static int counter = 0;
+  while (true) {
+    gr_bench(2, -1, input, 10);
+    pthread_mutex_lock(&stats_lock);
+    counter++;
+    pthread_mutex_unlock(&stats_lock);
+
+    // Only one thread will post stats.
+    if (thr_id == 0) {
+      double hashrate;
+      char hr_units[4] = {0};
+
+      pthread_mutex_lock(&stats_lock);
+      hashrate = gr_bench_hashes / gr_bench_time * opt_n_threads;
+      scale_hash_for_display(&hashrate, hr_units);
+      applog(LOG_BLUE, "Hashrate:\t%.3lf %sH/s (%.0lfs)", hashrate, hr_units,
+             gr_bench_time / opt_n_threads);
+      pthread_mutex_unlock(&stats_lock);
+    }
+  }
+}
+
 void gr_hash(void *output, const void *input) {
+  void *hash_1 = (void *)malloc(64);
+  void *hash_2 = (void *)malloc(64);
 
-  uint32_t hash[64 / 4];
-  sph_blake512_context ctx_blake;
-  sph_bmw512_context ctx_bmw;
-  sph_groestl512_context ctx_groestl;
-  sph_jh512_context ctx_jh;
-  sph_keccak512_context ctx_keccak;
-  sph_skein512_context ctx_skein;
-  sph_luffa512_context ctx_luffa;
-  sph_cubehash512_context ctx_cubehash;
-  sph_shavite512_context ctx_shavite;
-  sph_simd512_context ctx_simd;
-  sph_echo512_context ctx_echo;
-  sph_hamsi512_context ctx_hamsi;
-  sph_fugue512_context ctx_fugue;
-  sph_shabal512_context ctx_shabal;
-  sph_whirlpool_context ctx_whirlpool;
-  sph_haval256_5_context ctx_haval;
-  sph_tiger_context ctx_tiger;
-  sph_gost512_context ctx_gost;
-  sph_sha256_context ctx_sha;
-
-  void *in = (void *)input;
-  int size = 80;
   uint8_t selectedAlgoOutput[15] = {0};
   uint8_t selectedCNAlgoOutput[6] = {0};
+
   getAlgoString(&input[4], 64, selectedAlgoOutput, 15);
   getAlgoString(&input[4], 64, selectedCNAlgoOutput, 6);
-  int i;
-  for (i = 0; i < 18; i++) {
-    uint8_t algo;
-    uint8_t cnAlgo;
-    int coreSelection;
-    int cnSelection = -1;
-    if (i < 5) {
-      coreSelection = i;
-    } else if (i < 11) {
-      coreSelection = i - 1;
-    } else {
-      coreSelection = i - 2;
-    }
-    if (i == 5) {
-      coreSelection = -1;
-      cnSelection = 0;
-    }
-    if (i == 11) {
-      coreSelection = -1;
-      cnSelection = 1;
-    }
-    if (i == 17) {
-      coreSelection = -1;
-      cnSelection = 2;
-    }
-    if (coreSelection >= 0) {
-      algo = selectedAlgoOutput[(uint8_t)coreSelection];
-    } else {
-      algo = 16; // skip core hashing for this loop iteration
-    }
-    if (cnSelection >= 0) {
-      cnAlgo = selectedCNAlgoOutput[(uint8_t)cnSelection];
-    } else {
-      cnAlgo = 14; // skip cn hashing for this loop iteration
-    }
-    // selection cnAlgo. if a CN algo is selected then core algo will not be
-    // selected
-    switch (cnAlgo) {
-    case CNDark:
-      cryptonightdark_hash(in, hash, size, 1);
-      break;
-    case CNDarklite:
-      cryptonightdarklite_hash(in, hash, size, 1);
-      break;
-    case CNFast:
-      cryptonightfast_hash(in, hash, size, 1);
-      break;
-    case CNLite:
-      cryptonightlite_hash(in, hash, size, 1);
-      break;
-    case CNTurtle:
-      cryptonightturtle_hash(in, hash, size, 1);
-      break;
-    case CNTurtlelite:
-      cryptonightturtlelite_hash(in, hash, size, 1);
-      break;
-    }
-    // selection core algo
-    switch (algo) {
-    case BLAKE:
-      sph_blake512_init(&ctx_blake);
-      sph_blake512(&ctx_blake, in, size);
-      sph_blake512_close(&ctx_blake, hash);
-      break;
-    case BMW:
-      sph_bmw512_init(&ctx_bmw);
-      sph_bmw512(&ctx_bmw, in, size);
-      sph_bmw512_close(&ctx_bmw, hash);
-      break;
-    case GROESTL:
-      sph_groestl512_init(&ctx_groestl);
-      sph_groestl512(&ctx_groestl, in, size);
-      sph_groestl512_close(&ctx_groestl, hash);
-      break;
-    case SKEIN:
-      sph_skein512_init(&ctx_skein);
-      sph_skein512(&ctx_skein, in, size);
-      sph_skein512_close(&ctx_skein, hash);
-      break;
-    case JH:
-      sph_jh512_init(&ctx_jh);
-      sph_jh512(&ctx_jh, in, size);
-      sph_jh512_close(&ctx_jh, hash);
-      break;
-    case KECCAK:
-      sph_keccak512_init(&ctx_keccak);
-      sph_keccak512(&ctx_keccak, in, size);
-      sph_keccak512_close(&ctx_keccak, hash);
-      break;
-    case LUFFA:
-      sph_luffa512_init(&ctx_luffa);
-      sph_luffa512(&ctx_luffa, in, size);
-      sph_luffa512_close(&ctx_luffa, hash);
-      break;
-    case CUBEHASH:
-      sph_cubehash512_init(&ctx_cubehash);
-      sph_cubehash512(&ctx_cubehash, in, size);
-      sph_cubehash512_close(&ctx_cubehash, hash);
-      break;
-    case SHAVITE:
-      sph_shavite512_init(&ctx_shavite);
-      sph_shavite512(&ctx_shavite, in, size);
-      sph_shavite512_close(&ctx_shavite, hash);
-      break;
-    case SIMD:
-      sph_simd512_init(&ctx_simd);
-      sph_simd512(&ctx_simd, in, size);
-      sph_simd512_close(&ctx_simd, hash);
-      break;
-    case ECHO:
-      sph_echo512_init(&ctx_echo);
-      sph_echo512(&ctx_echo, in, size);
-      sph_echo512_close(&ctx_echo, hash);
-      break;
-    case HAMSI:
-      sph_hamsi512_init(&ctx_hamsi);
-      sph_hamsi512(&ctx_hamsi, in, size);
-      sph_hamsi512_close(&ctx_hamsi, hash);
-      break;
-    case FUGUE:
-      sph_fugue512_init(&ctx_fugue);
-      sph_fugue512(&ctx_fugue, in, size);
-      sph_fugue512_close(&ctx_fugue, hash);
-      break;
-    case SHABAL:
-      sph_shabal512_init(&ctx_shabal);
-      sph_shabal512(&ctx_shabal, in, size);
-      sph_shabal512_close(&ctx_shabal, hash);
-      break;
-    case WHIRLPOOL:
-      sph_whirlpool_init(&ctx_whirlpool);
-      sph_whirlpool(&ctx_whirlpool, in, size);
-      sph_whirlpool_close(&ctx_whirlpool, hash);
-      break;
-    }
-    if (cnSelection >= 0) {
-      memset(&hash[8], 0, 32);
-    }
-    in = (void *)hash;
-    size = 64;
-  }
-  memcpy(output, hash, 32);
+
+  // First phasee uses full 80 bytes. Ther rest usees shorter 64 bytes.
+  doCoreAlgo(selectedAlgoOutput[0], input, hash_1, 80);
+  doCoreAlgo(selectedAlgoOutput[1], hash_1, hash_2, 64);
+  free(hash_1);
+  hash_1 = hash_2;
+  doCoreAlgo(selectedAlgoOutput[2], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[3], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[4], hash_1, hash_2, 64);
+  doCNAlgo(selectedCNAlgoOutput[0], hash_1, hash_2, 64);
+  memset(&hash_2[32], 0, 32);
+
+  doCoreAlgo(selectedAlgoOutput[5], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[6], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[7], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[8], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[9], hash_1, hash_2, 64);
+  doCNAlgo(selectedCNAlgoOutput[1], hash_1, hash_2, 64);
+  memset(&hash_2[32], 0, 32);
+
+  doCoreAlgo(selectedAlgoOutput[10], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[11], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[12], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[13], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[14], hash_1, hash_2, 64);
+  doCNAlgo(selectedCNAlgoOutput[2], hash_1, hash_2, 64);
+  memset(&hash_2[32], 0, 32);
+
+  memcpy(output, hash_2, 32);
+  free(hash_1);
 }
 
 int scanhash_gr(struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
@@ -300,23 +355,26 @@ int scanhash_gr(struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
   uint32_t nonce = first_nonce;
   int thr_id = mythr->id;
 
-  if (opt_benchmark)
-    ((uint32_t *)ptarget)[7] = 0x0000ff;
-
   swab32_array(endiandata, pdata, 20);
 
+  if (opt_benchmark) {
+    diff_to_hash(ptarget, 0.001 / opt_target_factor);
+    be32enc(&endiandata[19], 0);
+    gr_extensive_bench(endiandata, thr_id);
+  }
+
+  uint32_t hash[8];
+  const uint32_t Htarg = ptarget[7];
+  ;
   do {
-    const uint32_t Htarg = ptarget[7];
-    uint32_t hash[8];
     be32enc(&endiandata[19], nonce);
     gr_hash(hash, endiandata);
-
     if (hash[7] <= Htarg) {
       pdata[19] = nonce;
       *hashes_done = pdata[19] - first_nonce;
-      return 1;
+      submit_solution(work, hash, mythr);
     }
-    nonce++;
+    ++nonce;
 
   } while (nonce < max_nonce && !work_restart[thr_id].restart);
 

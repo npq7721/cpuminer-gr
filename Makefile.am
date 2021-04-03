@@ -35,7 +35,6 @@ cpuminer_SOURCES = \
   algo/cubehash/sph_cubehash.c \
   algo/echo/sph_echo.c \
   algo/echo/aes_ni/hash.c\
-  algo/gost/sph_gost.c \
   algo/groestl/sph_groestl.c \
   algo/fugue/sph_fugue.c \
   algo/hamsi/sph_hamsi.c \
@@ -50,7 +49,6 @@ cpuminer_SOURCES = \
   algo/luffa/sph_luffa.c \
   algo/lyra2/lyra2.c \
   algo/lyra2/sponge.c \
-  algo/haval/haval.c \
   algo/sha/aes_helper.c \
   algo/sha/sph_sha2.c \
   algo/sha/sph_sha2big.c \
@@ -73,7 +71,6 @@ cpuminer_SOURCES = \
   algo/gr/gr-gate.c \
   algo/simd/sph_simd.c \
   algo/skein/sph_skein.c \
-  algo/tiger/sph_tiger.c \
   algo/whirlpool/sph_whirlpool.c
 
 disable_flags =
