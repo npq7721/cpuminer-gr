@@ -50,3 +50,4 @@ sign.sh
 compat/curl-for-windows/
 
 bin/
+*.log

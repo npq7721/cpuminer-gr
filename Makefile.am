@@ -49,23 +49,21 @@ cpuminer_SOURCES = \
   algo/luffa/sph_luffa.c \
   algo/lyra2/lyra2.c \
   algo/lyra2/sponge.c \
-  algo/sha/aes_helper.c \
   algo/sha/sph_sha2.c \
   algo/sha/sph_sha2big.c \
   algo/sha/sha2.c \
   algo/sha/sha256-hash-opt.c \
+  algo/sha/aes_helper.c \
   algo/shabal/sph_shabal.c \
   algo/shavite/sph_shavite.c \
   algo/shavite/sph-shavite-aesni.c \
   algo/gr/cryptonote/crypto/aesb.c \
   algo/gr/cryptonote/crypto/hash.c \
   algo/gr/cryptonote/crypto/c_skein.c \
-  algo/gr/cryptonote/cryptonight.c \
   algo/gr/cryptonote/cryptonight_dark.c \
   algo/gr/cryptonote/cryptonight_dark_lite.c \
   algo/gr/cryptonote/cryptonight_fast.c \
   algo/gr/cryptonote/cryptonight_lite.c \
-  algo/gr/cryptonote/cryptonight_soft_shell.c \
   algo/gr/cryptonote/cryptonight_turtle.c \
   algo/gr/cryptonote/cryptonight_turtle_lite.c \
   algo/gr/gr-gate.c \

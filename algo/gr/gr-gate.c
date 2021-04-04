@@ -18,12 +18,10 @@
 #include "../whirlpool/sph_whirlpool.h"
 #include "cryptonote/crypto/c_keccak.h"
 #include "cryptonote/crypto/hash.h"
-#include "cryptonote/cryptonight.h"
 #include "cryptonote/cryptonight_dark.h"
 #include "cryptonote/cryptonight_dark_lite.h"
 #include "cryptonote/cryptonight_fast.h"
 #include "cryptonote/cryptonight_lite.h"
-#include "cryptonote/cryptonight_soft_shell.h"
 #include "cryptonote/cryptonight_turtle.h"
 #include "cryptonote/cryptonight_turtle_lite.h"
 #include <stdbool.h>
@@ -88,7 +86,7 @@ static void selectAlgo(unsigned char nibble, bool *selectedAlgos,
   }
 }
 
-static void getAlgoString(void *mem, unsigned int size,
+static void getAlgoString(const void *mem, unsigned int size,
                           uint8_t *selectedAlgoOutput, int algoCount) {
   int i;
   unsigned char *p = (unsigned char *)mem;
@@ -115,7 +113,7 @@ static void getAlgoString(void *mem, unsigned int size,
   }
 }
 
-static void doCNAlgo(uint8_t algo, void *in, void *hash, int size) {
+static void doCNAlgo(uint8_t algo, const void *in, void *hash, int size) {
   switch (algo) {
   case CNDark:
     cryptonightdark_hash(in, hash, size, 1);
@@ -138,7 +136,7 @@ static void doCNAlgo(uint8_t algo, void *in, void *hash, int size) {
   }
 }
 
-static void doCoreAlgo(uint8_t algo, void *in, void *hash, int size) {
+static void doCoreAlgo(uint8_t algo, const void *in, void *hash, int size) {
   switch (algo) {
   case BLAKE:;
     sph_blake512_context ctx_blake;
@@ -339,9 +337,9 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   uint8_t selectedAlgoOutput[15] = {0};
   uint8_t selectedCNAlgoOutput[6] = {0};
 
-  getAlgoString(&input[4], 64, selectedAlgoOutput, 15);
+  getAlgoString(input + 4, 64, selectedAlgoOutput, 15);
   if (cn > 19) {
-    getAlgoString(&input[4], 64, selectedCNAlgoOutput, 6);
+    getAlgoString(input + 4, 64, selectedCNAlgoOutput, 6);
   } else {
     selectedCNAlgoOutput[0] = cc[cn][0];
     selectedCNAlgoOutput[1] = cc[cn][1];
@@ -357,7 +355,7 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   doCoreAlgo(selectedAlgoOutput[3], hash_1, hash_2, 64);
   doCoreAlgo(selectedAlgoOutput[4], hash_1, hash_2, 64);
   doCNAlgo(selectedCNAlgoOutput[0], hash_1, hash_2, 64);
-  memset(&hash_2[32], 0, 32);
+  memset(hash_2 + 32, 0, 32);
 
   doCoreAlgo(selectedAlgoOutput[5], hash_1, hash_2, 64);
   doCoreAlgo(selectedAlgoOutput[6], hash_1, hash_2, 64);
@@ -365,7 +363,7 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   doCoreAlgo(selectedAlgoOutput[8], hash_1, hash_2, 64);
   doCoreAlgo(selectedAlgoOutput[9], hash_1, hash_2, 64);
   doCNAlgo(selectedCNAlgoOutput[1], hash_1, hash_2, 64);
-  memset(&hash_2[32], 0, 32);
+  memset(hash_2 + 32, 0, 32);
 
   doCoreAlgo(selectedAlgoOutput[10], hash_1, hash_2, 64);
   doCoreAlgo(selectedAlgoOutput[11], hash_1, hash_2, 64);
@@ -373,7 +371,7 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   doCoreAlgo(selectedAlgoOutput[13], hash_1, hash_2, 64);
   doCoreAlgo(selectedAlgoOutput[14], hash_1, hash_2, 64);
   doCNAlgo(selectedCNAlgoOutput[2], hash_1, hash_2, 64);
-  memset(&hash_2[32], 0, 32);
+  memset(hash_2 + 32, 0, 32);
 
   memcpy(output, hash_2, 32);
   free(hash_1);
