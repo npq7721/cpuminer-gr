@@ -382,6 +382,7 @@ struct work {
   unsigned char *xnonce2;
   bool sapling;
   bool stale;
+  bool dev;
 } __attribute__((aligned(64)));
 
 struct stratum_job {
@@ -432,6 +433,7 @@ struct stratum_ctx {
 
   int block_height;
   bool new_job;
+  bool dev;
 } __attribute__((aligned(64)));
 
 bool stratum_socket_full(struct stratum_ctx *sctx, int timeout);

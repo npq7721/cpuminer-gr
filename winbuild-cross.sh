@@ -50,7 +50,7 @@ rm -f config.status
 CFLAGS="-O3 -march=${1} ${3} ${DFLAGS}" ./configure ${CONFIGURE_ARGS}
 make -j 8
 strip -s cpuminer.exe
-mv cpuminer.exe bin/win/cpuminer-${2}.exe
+cp cpuminer.exe bin/win/cpuminer-${2}.exe
 
 }
 
@@ -91,7 +91,7 @@ compile "znver2" "zen3" "-mvaes"
 # Build native
 compile "native" "native" "-mtune=native"
 
-ls -l bin/unix
-if [[ $(ls bin/unix | wc -l) != "11" ]]; then
+ls -l bin/win
+if ( $(ls bin/win/*.exe | wc -l) != 12 ); then
     echo "Some binaries did not compile?"
 fi

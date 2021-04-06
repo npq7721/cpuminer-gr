@@ -63,6 +63,6 @@ compile "znver2" "zen3" "-mvaes"
 ./build.sh
 
 ls -l bin/unix
-if [[ $(ls bin/unix | wc -l) != "11" ]]; then
+if (( $(ls bin/unix/ | wc -l) != "11" )); then
     echo "Some binaries did not compile?"
 fi
