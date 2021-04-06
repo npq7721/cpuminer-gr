@@ -86,6 +86,7 @@ bool opt_debug = false;
 bool opt_debug_diff = false;
 bool opt_protocol = false;
 bool opt_benchmark = false;
+bool opt_benchmark_extended = false;
 bool opt_redirect = true;
 bool opt_extranonce = true;
 bool want_longpoll = false;
@@ -191,6 +192,7 @@ int default_api_listen = 4048;
 
 pthread_mutex_t applog_lock;
 pthread_mutex_t stats_lock;
+pthread_cond_t sync_cond;
 
 static struct timeval session_start;
 static struct timeval five_min_start;
@@ -301,7 +303,7 @@ static void affine_to_cpu_mask(int id, uint64_t mask) {
   if (id == -1)
     success = SetProcessAffinityMask(GetCurrentProcess(), mask);
 
-// Are Windows CPU Groups supported?
+    // Are Windows CPU Groups supported?
 #if _WIN32_WINNT == 0x0601
   else if (num_cpugroups == 1)
     success = SetThreadAffinityMask(GetCurrentThread(), mask);
@@ -681,7 +683,7 @@ static bool gbt_work_decode(const json_t *val, struct work *work) {
     // Segwit BEGIN
     // cbtx[cbtx_size++] = 1; /* out-counter */
     cbtx[cbtx_size++] = segwit ? 2 : 1; /* out-counter */
-                                        // Segwit END
+    // Segwit END
 
     le32enc((uint32_t *)(cbtx + cbtx_size), (uint32_t)cbvalue); /* value */
     le32enc((uint32_t *)(cbtx + cbtx_size + 4), cbvalue >> 32);
@@ -763,8 +765,9 @@ static bool gbt_work_decode(const json_t *val, struct work *work) {
     }
     if (xsig_len) {
       unsigned char *ssig_end = cbtx + 42 + cbtx[41];
-      int push_len =
-          cbtx[41] + xsig_len < 76 ? 1 : cbtx[41] + 2 + xsig_len > 100 ? 0 : 2;
+      int push_len = cbtx[41] + xsig_len < 76        ? 1
+                     : cbtx[41] + 2 + xsig_len > 100 ? 0
+                                                     : 2;
       n = xsig_len + push_len;
       memmove(ssig_end + n, ssig_end, cbtx_size - 42 - cbtx[41]);
       cbtx[41] += n;
@@ -957,8 +960,10 @@ void report_summary_log(bool force) {
   struct timeval diff;
 
   if (!opt_quiet || (curr_temp >= 80)) {
-    int wait_time =
-        curr_temp >= 90 ? 5 : curr_temp >= 80 ? 30 : curr_temp >= 70 ? 60 : 120;
+    int wait_time = curr_temp >= 90   ? 5
+                    : curr_temp >= 80 ? 30
+                    : curr_temp >= 70 ? 60
+                                      : 120;
     timeval_subtract(&diff, &now, &cpu_temp_time);
     if ((diff.tv_sec > wait_time) ||
         ((curr_temp > prev_temp) && (curr_temp >= 75))) {
@@ -1117,15 +1122,14 @@ static int share_result(int result, struct work *work, const char *reason) {
   }
 
   // calculate latency and share time.
-  if
-    likely(my_stats.submit_time.tv_sec) {
-      gettimeofday(&ack_time, NULL);
-      timeval_subtract(&latency_tv, &ack_time, &my_stats.submit_time);
-      latency = (latency_tv.tv_sec * 1e3 + latency_tv.tv_usec / 1e3);
-      timeval_subtract(&et, &my_stats.submit_time, &last_submit_time);
-      share_time = (double)et.tv_sec + ((double)et.tv_usec / 1e6);
-      memcpy(&last_submit_time, &my_stats.submit_time, sizeof last_submit_time);
-    }
+  if likely (my_stats.submit_time.tv_sec) {
+    gettimeofday(&ack_time, NULL);
+    timeval_subtract(&latency_tv, &ack_time, &my_stats.submit_time);
+    latency = (latency_tv.tv_sec * 1e3 + latency_tv.tv_usec / 1e3);
+    timeval_subtract(&et, &my_stats.submit_time, &last_submit_time);
+    share_time = (double)et.tv_sec + ((double)et.tv_usec / 1e6);
+    memcpy(&last_submit_time, &my_stats.submit_time, sizeof last_submit_time);
+  }
 
   // check result
   if (likely(result)) {
@@ -1136,14 +1140,13 @@ static int share_result(int result, struct work *work, const char *reason) {
       highest_share = my_stats.share_diff;
     sprintf(sres, "S%d", stale_share_count);
     sprintf(rres, "R%d", rejected_share_count);
-    if
-      unlikely((my_stats.net_diff > 0.) && (my_stats.share_diff >= net_diff)) {
-        solved = true;
-        solved_block_count++;
-        sprintf(bres, "BLOCK SOLVED %d", solved_block_count);
-        sprintf(ares, "A%d", accepted_share_count);
-      }
-    else {
+    if unlikely ((my_stats.net_diff > 0.) &&
+                 (my_stats.share_diff >= net_diff)) {
+      solved = true;
+      solved_block_count++;
+      sprintf(bres, "BLOCK SOLVED %d", solved_block_count);
+      sprintf(ares, "A%d", accepted_share_count);
+    } else {
       sprintf(bres, "B%d", solved_block_count);
       sprintf(ares, "Accepted %d", accepted_share_count);
     }
@@ -1428,13 +1431,13 @@ const char *gbt_lp_req =
     ", \"longpollid\": \"%s\"}], \"id\":0}\r\n";
 
 /*
-static const char *gbt_req =
-        "{\"method\": \"getblocktemplate\", \"params\": [{\"capabilities\": "
-        GBT_CAPABILITIES "}], \"id\":0}\r\n";
-const char *gbt_lp_req =
-        "{\"method\": \"getblocktemplate\", \"params\": [{\"capabilities\": "
-        GBT_CAPABILITIES ", \"longpollid\": \"%s\"}], \"id\":0}\r\n";
-*/
+   static const char *gbt_req =
+   "{\"method\": \"getblocktemplate\", \"params\": [{\"capabilities\": "
+   GBT_CAPABILITIES "}], \"id\":0}\r\n";
+   const char *gbt_lp_req =
+   "{\"method\": \"getblocktemplate\", \"params\": [{\"capabilities\": "
+   GBT_CAPABILITIES ", \"longpollid\": \"%s\"}], \"id\":0}\r\n";
+   */
 // Segwit END
 
 static bool get_upstream_work(CURL *curl, struct work *work) {
@@ -1654,22 +1657,21 @@ static bool get_work(struct thr_info *thr, struct work *work) {
   struct workio_cmd *wc;
   struct work *work_heap;
 
-  if
-    unlikely(opt_benchmark) {
-      uint32_t ts = (uint32_t)time(NULL);
+  if unlikely (opt_benchmark) {
+    uint32_t ts = (uint32_t)time(NULL);
 
-      // why 74? std cmp_size is 76, std data is 128
-      for (int n = 0; n < 74; n++)
-        ((char *)work->data)[n] = n;
+    // why 74? std cmp_size is 76, std data is 128
+    for (int n = 0; n < 74; n++)
+      ((char *)work->data)[n] = n;
 
-      work->data[algo_gate.ntime_index] = swab32(ts); // ntime
+    work->data[algo_gate.ntime_index] = swab32(ts); // ntime
 
-      // this overwrites much of the for loop init
-      memset(work->data + algo_gate.nonce_index, 0x00, 52); // nonce..nonce+52
-      work->data[20] = 0x80000000;
-      work->data[31] = 0x00000280;
-      return true;
-    }
+    // this overwrites much of the for loop init
+    memset(work->data + algo_gate.nonce_index, 0x00, 52); // nonce..nonce+52
+    work->data[20] = 0x80000000;
+    work->data[31] = 0x00000280;
+    return true;
+  }
   /* fill out work request message */
   wc = (struct workio_cmd *)calloc(1, sizeof(*wc));
   if (!wc)
@@ -1737,14 +1739,13 @@ bool submit_solution(struct work *work, const void *hash,
   if (likely(submit_work(thr, work))) {
     update_submit_stats(work, hash);
 
-    if
-      unlikely(!have_stratum &&
-               !have_longpoll) { // solo, block solved, force getwork
-        pthread_rwlock_wrlock(&g_work_lock);
-        g_work_time = 0;
-        pthread_rwlock_unlock(&g_work_lock);
-        restart_threads();
-      }
+    if unlikely (!have_stratum &&
+                 !have_longpoll) { // solo, block solved, force getwork
+      pthread_rwlock_wrlock(&g_work_lock);
+      g_work_time = 0;
+      pthread_rwlock_unlock(&g_work_lock);
+      restart_threads();
+    }
 
     if (!opt_quiet) {
       if (have_stratum)
@@ -2232,13 +2233,12 @@ static void *miner_thread(void *userdata) {
 
       // prevent stale work in solo
       // we can't submit twice a block!
-      if
-        unlikely(!have_stratum && !have_longpoll) {
-          pthread_rwlock_wrlock(&g_work_lock);
-          // will force getwork
-          g_work_time = 0;
-          pthread_rwlock_unlock(&g_work_lock);
-        }
+      if unlikely (!have_stratum && !have_longpoll) {
+        pthread_rwlock_wrlock(&g_work_lock);
+        // will force getwork
+        g_work_time = 0;
+        pthread_rwlock_unlock(&g_work_lock);
+      }
     }
 
     // display hashrate
@@ -2681,7 +2681,7 @@ static bool cpu_capability(bool display_only) {
          " with GCC");
   printf(" %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #else
-        printf("\n");
+  printf("\n");
 #endif
 
   printf("CPU features: ");
@@ -3107,6 +3107,13 @@ void parse_arg(int key, char *arg) {
     break;
   case 1005: // benchmark
     opt_benchmark = true;
+    want_longpoll = false;
+    want_stratum = false;
+    have_stratum = false;
+    break;
+  case 1105: // benchmark
+    opt_benchmark = true;
+    opt_benchmark_extended = true;
     want_longpoll = false;
     want_stratum = false;
     have_stratum = false;

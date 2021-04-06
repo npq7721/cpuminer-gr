@@ -238,18 +238,22 @@ static const uint8_t cc[20][3] = {
 
 static void gr_bench(int type, int algo, void *input, double time, int cn) {
   struct timeval start, end, diff;
-  double elapsed, hashrate, hashes = 0;
-  char hr_units[4] = {4};
-
+  double elapsed, hashes = 0;
   gettimeofday(&start, NULL);
   do {
     uint32_t hash[64 / 4];
-    if (type == 1) {
+    if (type == 3) {
+      static __thread int rot = 0;
+      gr_hash(hash, input, rot++);
+      if (rot == 20) {
+        rot = 0;
+      }
+    } else if (type == 2) {
+      gr_hash(hash, input, cn);
+    } else if (type == 1) {
       doCoreAlgo(algo, input, hash, 64);
     } else if (type == 0) {
       doCNAlgo(algo, input, hash, 64);
-    } else {
-      gr_hash(hash, input, cn);
     }
 
     hashes++;
@@ -258,74 +262,122 @@ static void gr_bench(int type, int algo, void *input, double time, int cn) {
     elapsed = (double)diff.tv_sec + (double)diff.tv_usec / 1e6;
   } while (elapsed <= time);
 
-  if (type == 2) {
-    pthread_mutex_lock(&stats_lock);
-    gr_bench_hashes += hashes;
-    gr_bench_time += elapsed;
-    pthread_mutex_unlock(&stats_lock);
-  }
+  pthread_mutex_lock(&stats_lock);
+  gr_bench_hashes += hashes;
+  gr_bench_time += elapsed;
+  pthread_mutex_unlock(&stats_lock);
+}
 
-  if (type != 2) {
-    hashrate = hashes / elapsed;
-    scale_hash_for_display(&hashrate, hr_units);
-    applog(LOG_BLUE, "Type %d\t->\t%.3lf %sH/s", algo, hashrate, hr_units);
+static void print_stats(const char *prefix, bool reset, bool same_line) {
+  double hashrate;
+  char hr_units[4] = {0};
+
+  pthread_mutex_lock(&stats_lock);
+
+  hashrate = gr_bench_hashes / gr_bench_time * opt_n_threads;
+  scale_hash_for_display(&hashrate, hr_units);
+  if (same_line) {
+    pthread_mutex_unlock(&applog_lock);
+    printf("                      %s\t%.2lf %sH/s (%.2lfs)\t-> %.3lf %sH/s per "
+           "thread.\r",
+           prefix, hashrate, hr_units, gr_bench_time / opt_n_threads,
+           hashrate / opt_n_threads, hr_units);
+    fflush(stdout);
+    pthread_mutex_unlock(&applog_lock);
+
+  } else {
+    applog(LOG_BLUE, "%s\t%.2lf %sH/s (%.2lfs)\t-> %.3lf %sH/s per thread.",
+           prefix, hashrate, hr_units, gr_bench_time / opt_n_threads,
+           hashrate / opt_n_threads, hr_units);
   }
+  if (reset) {
+    gr_bench_time = 0;
+    gr_bench_hashes = 0;
+  }
+  pthread_mutex_unlock(&stats_lock);
+}
+
+static void sync() {
+  static volatile int done = 0;
+
+  pthread_mutex_lock(&stats_lock);
+  done++;
+  if (done != opt_n_threads) {
+    pthread_cond_wait(&sync_cond, &stats_lock);
+  } else {
+    done = 0;
+    pthread_cond_broadcast(&sync_cond);
+  }
+  pthread_mutex_unlock(&stats_lock);
 }
 
 static void gr_extensive_bench(void *input, int thr_id) {
-  if (opt_n_threads == 1) {
+  char prefix[50];
+  if (opt_benchmark_extended) {
     int i;
-    applog(LOG_BLUE, "Testing Cryptonight algorithms (10s per algorithm)");
+    if (thr_id == 0) {
+      applog(LOG_BLUE, "Testing Cryptonight algorithms (10s per algorithm)");
+    }
     for (i = 0; i < 6; i++) {
-      gr_bench(0, i, input, 10.0, 0);
+      gr_bench(0, i, input, 10., 0);
+      sync();
+      if (thr_id == 0) {
+        sprintf(prefix, "Type %d:", i + 1);
+        print_stats(prefix, true, false);
+      }
     }
-    applog(LOG_BLUE, "Testing Core algorithms (2s per algorithm)");
+    if (thr_id == 0) {
+      applog(LOG_BLUE, "Testing Core algorithms (2s per algorithm)");
+    }
     for (i = 0; i < 15; i++) {
-      gr_bench(1, i, input, 2.0, 0);
-    }
-  }
-  double intervals = 30.;
-  if (thr_id == 0) {
-    applog(LOG_BLUE, "Testing everything (%.0lfs intervals)", intervals);
-  }
-  static int rot = 0;
-  double total_hashes = 0;
-  double total_time = 0;
-  while (rot < 20) {
-    gr_bench(2, -1, input, 0.25, rot);
+      gr_bench(1, i, input, 2., 0);
 
-    // Only one thread will post stats.
-    if (thr_id == 0 && gr_bench_time > intervals * opt_n_threads) {
-      double hashrate;
-      char hr_units[4] = {0};
-      applog(LOG_BLUE, "Rotation %d %d %d", cc[rot][0], cc[rot][1], cc[rot][2]);
-      rot++;
-      pthread_mutex_lock(&stats_lock);
-      hashrate = gr_bench_hashes / gr_bench_time * opt_n_threads;
-      scale_hash_for_display(&hashrate, hr_units);
-      applog(LOG_BLUE,
-             "Hashrate: \t%.1lf %sH/s (%.0lfs)\t-> %.2lf %sH/s per thread.",
-             hashrate, hr_units, gr_bench_time / opt_n_threads,
-             hashrate / opt_n_threads, hr_units);
-      total_hashes += gr_bench_hashes;
-      total_time += gr_bench_time;
-      gr_bench_hashes = 0.;
-      gr_bench_time = 0.;
-      pthread_mutex_unlock(&stats_lock);
+      sync();
+      if (thr_id == 0) {
+        sprintf(prefix, "Type %d:", i + 1);
+        print_stats(prefix, true, false);
+      }
+    }
+    if (thr_id == 0) {
+      applog(LOG_BLUE, "Testing CN Rotations (10s per rotation)");
+    }
+    static volatile int rot = 0;
+    while (rot < 20) {
+      gr_bench(2, -1, input, 10., rot);
+
+      sync();
+      if (thr_id == 0) {
+        sprintf(prefix, "Rotation %d %d %d:", cc[rot][0], cc[rot][1],
+                cc[rot][2]);
+        print_stats(prefix, true, false);
+        rot++;
+      }
+      // Make sure rot is updated.
+      sync();
     }
   }
-  // Only one thread will post stats.
+
+  // Default benchmark that goes through all CN scenarios with Random Core.
+  double target_time = 30;
+  double target_multi = 1;
+
   if (thr_id == 0) {
-    double hashrate;
-    char hr_units[4] = {0};
-    pthread_mutex_lock(&stats_lock);
-    hashrate = total_hashes / total_time * opt_n_threads;
-    scale_hash_for_display(&hashrate, hr_units);
-    applog(LOG_BLUE,
-           "Hashrate (Avg):\t%.1lf %sH/s (%.0lfs)\t-> %.2lf %sH/s per thread.",
-           hashrate, hr_units, total_time / opt_n_threads,
-           hashrate / opt_n_threads, hr_units);
-    pthread_mutex_unlock(&stats_lock);
+    applog(LOG_BLUE, "Testing Average performance");
+  }
+  while (true) {
+    gr_bench(3, -1, input, 2., 0);
+
+    sync();
+    if (thr_id == 0) {
+      if (target_time * target_multi > gr_bench_time / opt_n_threads) {
+        // Update line.
+        print_stats("Hashrate (Avg):", false, true);
+      } else {
+        // Print stats for good.
+        print_stats("Hashrate (Avg):", false, false);
+        target_multi++;
+      }
+    }
   }
   exit(0);
 }
@@ -341,6 +393,7 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   if (cn > 19) {
     getAlgoString(input + 4, 64, selectedCNAlgoOutput, 6);
   } else {
+    // Benchmarking.
     selectedCNAlgoOutput[0] = cc[cn][0];
     selectedCNAlgoOutput[1] = cc[cn][1];
     selectedCNAlgoOutput[2] = cc[cn][2];

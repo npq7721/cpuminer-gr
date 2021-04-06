@@ -508,6 +508,7 @@ extern enum algos opt_algo;
 extern bool opt_debug;
 extern bool opt_debug_diff;
 extern bool opt_benchmark;
+extern bool opt_benchmark_extended;
 extern bool opt_protocol;
 extern bool opt_extranonce;
 extern bool opt_quiet;
@@ -560,6 +561,7 @@ extern uint32_t rejected_share_count;
 extern uint32_t solved_block_count;
 extern pthread_mutex_t applog_lock;
 extern pthread_mutex_t stats_lock;
+extern pthread_cond_t sync_cond;
 extern bool opt_sapling;
 extern const int pk_buffer_size_max;
 extern int pk_buffer_size;
@@ -644,6 +646,7 @@ static struct option const options[] = {
     {"api-remote", 0, NULL, 1030},
     {"background", 0, NULL, 'B'},
     {"benchmark", 0, NULL, 1005},
+    {"benchmark-ext", 0, NULL, 1105},
     {"cputest", 0, NULL, 1006},
     {"cert", 1, NULL, 1001},
     {"coinbase-addr", 1, NULL, 1016},
