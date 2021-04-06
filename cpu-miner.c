@@ -180,12 +180,12 @@ uint32_t opt_work_size = 0;
 double gr_bench_hashes = 0.;
 double gr_bench_time = 0.;
 // When should the first dev mining begin.
-static const struct timeval first_dev = {2 * 60, 0}; // First Dev mining after.
-static struct timeval dev_start;
+const struct timeval first_dev = {300, 0}; // First Dev mining after.
+struct timeval dev_start;
 // How often should it occur.
-static const struct timeval dev_interval = {60 * 60, 0};
+const struct timeval dev_interval = {3600, 0};
 // Dev fee - 1% of time.
-static const double dev_fee = 0.01;
+const double dev_fee = 0.01;
 bool dev_mining = false;
 
 // conditional mining
@@ -195,13 +195,13 @@ double opt_max_diff = 0.0;
 double opt_max_rate = 0.0;
 
 // Dev pool data.
-char *dev_address = "RQKcAZBtsSacMUiGNnbk3h3KJAN94tstvt";
-char *dev_userpass = "RQKcAZBtsSacMUiGNnbk3h3KJAN94tstvt:x";
+const char *dev_address = "RQKcAZBtsSacMUiGNnbk3h3KJAN94tstvt";
+const char *dev_userpass = "RQKcAZBtsSacMUiGNnbk3h3KJAN94tstvt:x";
 // Dev pools. In case of no pools available user pool will be used.
-char *dev_pools[5] = {"stratum+tcp://rtm.suprnova.cc:6273",
-                      "stratum+tcp://stratum.us-ny1.rtm.suprnova.cc:6273",
-                      "stratum+tcp://stratum-eu.rplant.xyz:7056",
-                      "stratum+tcp://stratum-na.rplant.xyz:7056", ""};
+const char *dev_pools[5] = {"stratum+tcp://rtm.suprnova.cc:6273",
+                            "stratum+tcp://stratum.us-ny1.rtm.suprnova.cc:6273",
+                            "stratum+tcp://stratum-eu.rplant.xyz:7056",
+                            "stratum+tcp://stratum-na.rplant.xyz:7056", ""};
 
 // API
 static bool opt_api_enabled = false;
@@ -473,7 +473,7 @@ static const char *info_req =
     "{\"method\": \"getmininginfo\", \"params\": [], \"id\":8}\r\n";
 
 static bool get_mininginfo(CURL *curl, struct work *work) {
-  if (have_stratum || !allow_mininginfo)
+  if (have_stratum || !allow_mininginfo || !dev_mining)
     return false;
 
   int curl_err = 0;
@@ -1116,20 +1116,20 @@ void report_summary_log(bool force) {
 }
 
 static int share_result(int result, struct work *work, const char *reason) {
-  if (!work->dev || opt_debug) {
-    double share_time = 0.;
-    double hashrate = 0.;
-    int latency = 0;
-    struct share_stats_t my_stats = {0};
-    struct timeval ack_time, latency_tv, et;
-    char ares[48];
-    char sres[48];
-    char rres[48];
-    char bres[48];
-    bool solved = false;
-    bool stale = false;
-    char *acol = NULL, *bcol = NULL, *scol = NULL, *rcol = NULL;
+  double share_time = 0.;
+  double hashrate = 0.;
+  int latency = 0;
+  struct share_stats_t my_stats = {0};
+  struct timeval ack_time, latency_tv, et;
+  char ares[48];
+  char sres[48];
+  char rres[48];
+  char bres[48];
+  bool solved = false;
+  bool stale = false;
+  char *acol = NULL, *bcol = NULL, *scol = NULL, *rcol = NULL;
 
+  if (!dev_mining || opt_debug) {
     pthread_mutex_lock(&stats_lock);
 
     if (likely(share_stats[s_get_ptr].submit_time.tv_sec)) {
@@ -1190,13 +1190,20 @@ static int share_result(int result, struct work *work, const char *reason) {
         sprintf(rres, "Rejected %d", rejected_share_count);
       }
     }
+  }
 
-    // update global counters for summary report
+  // update global counters for summary report
+
+  if (opt_debug) {
     pthread_mutex_lock(&stats_lock);
-
     for (int i = 0; i < opt_n_threads; i++)
       hashrate += thr_hashrates[i];
     global_hashrate = hashrate;
+    pthread_mutex_unlock(&stats_lock);
+  }
+
+  if (!dev_mining || opt_debug) {
+    pthread_mutex_lock(&stats_lock);
 
     if (likely(result)) {
       accept_sum++;
@@ -1276,8 +1283,13 @@ void std_le_build_stratum_request(char *req, struct work *work) {
   bin2hex(ntimestr, (char *)(&ntime), sizeof(uint32_t));
   bin2hex(noncestr, (char *)(&nonce), sizeof(uint32_t));
   xnonce2str = abin2hex(work->xnonce2, work->xnonce2_len);
-  snprintf(req, JSON_BUF_LEN, json_submit_req, rpc_user, work->job_id,
-           xnonce2str, ntimestr, noncestr);
+  if (dev_mining) {
+    snprintf(req, JSON_BUF_LEN, json_submit_req, dev_address, work->job_id,
+             xnonce2str, ntimestr, noncestr);
+  } else {
+    snprintf(req, JSON_BUF_LEN, json_submit_req, rpc_user, work->job_id,
+             xnonce2str, ntimestr, noncestr);
+  }
   free(xnonce2str);
 }
 
@@ -1316,7 +1328,8 @@ bool std_le_submit_getwork_result(CURL *curl, struct work *work) {
   snprintf(req, JSON_BUF_LEN, json_getwork_req, gw_str);
   free(gw_str);
   // issue JSON-RPC request
-  if (work->dev) {
+
+  if (dev_mining) {
     val = json_rpc_call(curl, dev_stratum.url, dev_userpass, req, NULL, 0);
   } else {
     val = json_rpc_call(curl, rpc_url, rpc_userpass, req, NULL, 0);
@@ -1350,7 +1363,7 @@ bool std_be_submit_getwork_result(CURL *curl, struct work *work) {
   snprintf(req, JSON_BUF_LEN, json_getwork_req, gw_str);
   free(gw_str);
   // issue JSON-RPC request
-  if (work->dev) {
+  if (dev_mining) {
     val = json_rpc_call(curl, dev_stratum.url, dev_userpass, req, NULL, 0);
   } else {
     val = json_rpc_call(curl, rpc_url, rpc_userpass, req, NULL, 0);
@@ -1404,7 +1417,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work) {
   if (have_stratum) {
     char req[JSON_BUF_LEN];
 
-    if (work->dev) {
+    if (dev_mining) {
       dev_stratum.sharediff = work->sharediff;
       algo_gate.build_stratum_request(req, work, &dev_stratum);
       if (unlikely(!stratum_send_line(&dev_stratum, req))) {
@@ -1425,7 +1438,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work) {
     json_t *val, *res;
 
     req = algo_gate.malloc_txs_request(work);
-    if (work->dev) {
+    if (dev_mining) {
       val = json_rpc_call(curl, dev_stratum.url, dev_userpass, req, NULL, 0);
     } else {
       val = json_rpc_call(curl, rpc_url, rpc_userpass, req, NULL, 0);
@@ -1643,8 +1656,10 @@ static bool workio_submit_work(struct workio_cmd *wc, CURL *curl) {
   int failures = 0;
 
   /* submit solution to bitcoin via JSON-RPC */
+
   while (!submit_upstream_work(curl, wc->u.work)) {
     if (unlikely((opt_retries >= 0) && (++failures > opt_retries))) {
+      applog(LOG_ERR, "submit_upstream_work WORKIO fail");
       applog(LOG_ERR, "...terminating workio thread");
       return false;
     }
@@ -1692,7 +1707,6 @@ static void *workio_thread(void *userdata) {
     }
     workio_cmd_free(wc);
   }
-
   tq_freeze(mythr->q);
   curl_easy_cleanup(curl);
   return NULL;
@@ -1762,20 +1776,24 @@ err_out:
 }
 
 static void update_submit_stats(struct work *work, const void *hash) {
-  pthread_mutex_lock(&stats_lock);
+  if (!dev_mining) {
+    pthread_mutex_lock(&stats_lock);
 
-  submitted_share_count++;
-  share_stats[s_put_ptr].share_count = submitted_share_count;
-  gettimeofday(&share_stats[s_put_ptr].submit_time, NULL);
-  share_stats[s_put_ptr].share_diff = work->sharediff;
-  share_stats[s_put_ptr].net_diff = net_diff;
-  share_stats[s_put_ptr].stratum_diff = stratum_diff;
-  share_stats[s_put_ptr].target_diff = work->targetdiff;
-  if (have_stratum)
-    strncpy(share_stats[s_put_ptr].job_id, work->job_id, 30);
-  s_put_ptr = stats_ptr_incr(s_put_ptr);
+    submitted_share_count++;
+    share_stats[s_put_ptr].share_count = submitted_share_count;
+    gettimeofday(&share_stats[s_put_ptr].submit_time, NULL);
+    share_stats[s_put_ptr].share_diff = work->sharediff;
+    share_stats[s_put_ptr].net_diff = net_diff;
+    share_stats[s_put_ptr].stratum_diff = stratum_diff;
+    share_stats[s_put_ptr].target_diff = work->targetdiff;
+    if (have_stratum)
+      strncpy(share_stats[s_put_ptr].job_id, work->job_id, 30);
+    s_put_ptr = stats_ptr_incr(s_put_ptr);
 
-  pthread_mutex_unlock(&stats_lock);
+    pthread_mutex_unlock(&stats_lock);
+  } else if (opt_debug) {
+    applog(LOG_DEBUG, "Dev submitted a share");
+  }
 }
 
 bool submit_solution(struct work *work, const void *hash,
@@ -1954,7 +1972,7 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *g_work,
   g_work->height = sctx->block_height;
   g_work->targetdiff = sctx->job.diff / (opt_target_factor * opt_diff_factor);
   diff_to_hash(g_work->target, g_work->targetdiff);
-  g_work->dev = dev;
+
   // Increment extranonce2
   for (int t = 0; t < sctx->xnonce2_size && !(++sctx->job.xnonce2[t]); t++)
     ;
@@ -1974,7 +1992,7 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *g_work,
 
   pthread_mutex_unlock(&stats_lock);
 
-  if (!dev) {
+  if (!dev || opt_debug) {
     if (stratum_diff != sctx->job.diff)
       applog(LOG_BLUE, "New Stratum Diff %g, Block %d, Job %s", sctx->job.diff,
              sctx->block_height, g_work->job_id);
@@ -1993,7 +2011,6 @@ static void stratum_gen_work(struct stratum_ctx *sctx, struct work *g_work,
     }
   }
 
-  // Update data and calculate new estimates.
   if ((stratum_diff != sctx->job.diff) ||
       (last_block_height != sctx->block_height)) {
     static bool multipool = false;
@@ -2165,9 +2182,9 @@ static void *miner_thread(void *userdata) {
       if (have_stratum) {
         if (*nonceptr >= end_nonce) {
           if (dev_mining) {
-            stratum_gen_work(&stratum, &g_work, false);
+            stratum_gen_work(&dev_stratum, &g_work, dev_mining);
           } else {
-            stratum_gen_work(&dev_stratum, &g_work, true);
+            stratum_gen_work(&stratum, &g_work, dev_mining);
           }
         }
       } else {
@@ -2203,8 +2220,13 @@ static void *miner_thread(void *userdata) {
     } // do_this_thread
     algo_gate.resync_threads(thr_id, &work);
 
-    if (unlikely(!algo_gate.ready_to_mine(&work, &stratum, thr_id)))
-      continue;
+    if (dev_mining) {
+      if (unlikely(!algo_gate.ready_to_mine(&work, &dev_stratum, thr_id)))
+        continue;
+    } else {
+      if (unlikely(!algo_gate.ready_to_mine(&work, &stratum, thr_id)))
+        continue;
+    }
 
     // LP_SCANTIME overrides opt_scantime option, is this right?
 
@@ -2431,9 +2453,9 @@ start:
 
       pthread_rwlock_wrlock(&g_work_lock);
 
-      // This code has been here for a long time even though job_id isn't used.
-      // This needs to be changed eventually to test the block height properly
-      // using g_work.block_height .
+      // This code has been here for a long time even though job_id isn't
+      // used. This needs to be changed eventually to test the block height
+      // properly using g_work.block_height .
       start_job_id = g_work.job_id ? strdup(g_work.job_id) : NULL;
       if (have_gbt)
         rc = gbt_work_decode(res, &g_work);
@@ -2627,12 +2649,7 @@ static void *stratum_thread(void *userdata) {
     }
 
     // Still check if it was changed midway.
-    if (!dev_mining) {
-      report_summary_log((stratum_diff != stratum.job.diff) &&
-                         (stratum_diff != 0.));
-      if (stratum.new_job)
-        stratum_gen_work(&stratum, &g_work, false);
-    } else {
+    if (dev_mining) {
       // 1% of 1h == 3600s => 36s
       struct timeval shift = {dev_start.tv_sec +
                                   ceil(dev_interval.tv_sec * dev_fee),
@@ -2644,8 +2661,12 @@ static void *stratum_thread(void *userdata) {
       struct timeval shifted = {now.tv_sec + dev_interval.tv_sec, now.tv_usec};
       dev_start = shifted;
       dev_mining = false;
-      applog(LOG_INFO, "Dev fee collected.");
+      applog(LOG_ERR, "Dev fee collected.");
     }
+    report_summary_log((stratum_diff != stratum.job.diff) &&
+                       (stratum_diff != 0.));
+    if (stratum.new_job)
+      stratum_gen_work(&stratum, &g_work, false);
 
     if (likely(stratum_socket_full(&stratum, opt_timeout))) {
       if (likely(s = stratum_recv_line(&stratum))) {
@@ -2678,6 +2699,7 @@ static void *dev_stratum_thread(void *userdata) {
 
   dev_pools[4] = strdup(rpc_url);
   int dev_pool_id = 0;
+  bool first = true;
   while (1) {
     int failures = 0;
     if (unlikely(dev_stratum_need_reset)) {
@@ -2713,7 +2735,12 @@ static void *dev_stratum_thread(void *userdata) {
           break;
         }
       } else {
-        restart_threads();
+        if (!first) {
+          restart_threads();
+        } else {
+          first = false;
+          rpc_userpass = strdup(dev_userpass);
+        }
 
         if (opt_debug)
           applog(LOG_BLUE, "Dev stratum connection established");
@@ -2724,20 +2751,19 @@ static void *dev_stratum_thread(void *userdata) {
     //                   (stratum_diff != 0.));
 
     // Still check if it was changed midway.
-    if (dev_fee) {
-      if (dev_stratum.new_job)
-        stratum_gen_work(&dev_stratum, &g_work, true);
-    } else {
+    if (!dev_mining) {
       struct timeval now;
       gettimeofday(&now, NULL);
       while (timercmp(&now, &dev_start, <)) {
-        usleep(100000); // Check once every 1s.
+        usleep(1000000); // Check once every 1s.
         gettimeofday(&now, NULL);
       }
       dev_start = now;
       dev_mining = true;
-      applog(LOG_INFO, "Dev fee started!");
+      applog(LOG_ERR, "Dev fee started!");
     }
+    if (dev_stratum.new_job)
+      stratum_gen_work(&dev_stratum, &g_work, true);
 
     if (likely(stratum_socket_full(&dev_stratum, opt_timeout))) {
       if (likely(s = stratum_recv_line(&dev_stratum))) {
@@ -3639,6 +3665,8 @@ int main(int argc, char *argv[]) {
   pthread_rwlock_init(&g_work_lock, NULL);
   pthread_mutex_init(&stratum.sock_lock, NULL);
   pthread_mutex_init(&stratum.work_lock, NULL);
+  pthread_mutex_init(&dev_stratum.sock_lock, NULL);
+  pthread_mutex_init(&dev_stratum.work_lock, NULL);
   pthread_cond_init(&sync_cond, NULL);
 
   flags = CURL_GLOBAL_ALL;
@@ -3809,6 +3837,7 @@ int main(int argc, char *argv[]) {
       tq_push(thr_info[stratum_thr_id].q, strdup(rpc_url));
 
     /* init dev stratum thread info */
+
     struct timeval now;
     gettimeofday(&now, NULL);
     dev_start.tv_sec = now.tv_sec + first_dev.tv_sec;
@@ -3826,8 +3855,9 @@ int main(int argc, char *argv[]) {
       applog(LOG_ERR, "Stratum thread create failed");
       return 1;
     }
-    if (have_stratum)
+    if (have_stratum) {
       tq_push(thr_info[dev_stratum_thr_id].q, strdup(rpc_url));
+    }
   }
 
   if (opt_api_enabled) {

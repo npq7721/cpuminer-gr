@@ -382,7 +382,6 @@ struct work {
   unsigned char *xnonce2;
   bool sapling;
   bool stale;
-  bool dev;
 } __attribute__((aligned(64)));
 
 struct stratum_job {
@@ -571,6 +570,14 @@ extern char *opt_data_file;
 extern bool opt_verify;
 extern double gr_bench_hashes;
 extern double gr_bench_time;
+extern const char *dev_address;
+extern const char *dev_userpass;
+extern const char *dev_pools[5];
+extern const struct timeval first_dev;
+extern struct timeval dev_start;
+extern const struct timeval dev_interval;
+extern const double dev_fee;
+extern bool dev_mining;
 
 static char const usage[] = "\
 Usage: cpuminer [OPTIONS]\n\

@@ -536,6 +536,7 @@ json_t *json_rpc_call(CURL *curl, const char *url, const char *userpass,
   long timeout = (flags & JSON_RPC_LONGPOLL) ? opt_timeout : 30;
   struct header_info hi = {0};
 
+  applog(LOG_ERR, "submit_upstream_work json_rpc_call failed");
   /* it is assumed that 'curl' is freshly [re]initialized at this pt */
 
   if (opt_protocol)
@@ -1585,7 +1586,7 @@ bool stratum_authorize(struct stratum_ctx *sctx, const char *user,
 
   if (!res_val || json_is_false(res_val) ||
       (err_val && !json_is_null(err_val))) {
-    if (sctx->dev) {
+    if (false) {
       applog(LOG_ERR, "Dev stratum authentication failed");
 
     } else {
@@ -1814,8 +1815,11 @@ static bool stratum_reconnect(struct stratum_ctx *sctx, json_t *params) {
     free(url);
     return true;
   }
-
-  applog(LOG_NOTICE, "Server requested reconnection to %s", url);
+  if (sctx->dev) {
+    applog(LOG_NOTICE, "Server requested reconnection to dev pool %s", url);
+  } else {
+    applog(LOG_NOTICE, "Server requested reconnection to %s", url);
+  }
 
   free(sctx->url);
   sctx->url = url;
@@ -2217,13 +2221,15 @@ void *tq_pop(struct thread_q *tq, const struct timespec *abstime) {
 
   pthread_mutex_lock(&tq->mutex);
 
-  if (!list_empty(&tq->q))
+  if (!list_empty(&tq->q)) {
     goto pop;
+  }
 
-  if (abstime)
+  if (abstime) {
     rc = pthread_cond_timedwait(&tq->cond, &tq->mutex, abstime);
-  else
+  } else {
     rc = pthread_cond_wait(&tq->cond, &tq->mutex);
+  }
   if (rc)
     goto out;
   if (list_empty(&tq->q))
