@@ -18,6 +18,7 @@
 #include "../whirlpool/sph_whirlpool.h"
 #include "cryptonote/crypto/c_keccak.h"
 #include "cryptonote/crypto/hash.h"
+#include "cryptonote/cryptonight.h"
 #include "cryptonote/cryptonight_dark.h"
 #include "cryptonote/cryptonight_dark_lite.h"
 #include "cryptonote/cryptonight_fast.h"
@@ -388,11 +389,11 @@ static void gr_extensive_bench(void *input, int thr_id) {
 }
 
 void gr_hash(void *output, const void *input, uint8_t cn) {
-  void *hash_1 = (void *)malloc(64);
-  void *hash_2 = (void *)malloc(64);
+  static __thread uint8_t hash_1[64];
+  static __thread uint8_t hash_2[64];
 
-  uint8_t selectedAlgoOutput[15] = {0};
-  uint8_t selectedCNAlgoOutput[6] = {0};
+  static __thread uint8_t selectedAlgoOutput[15] = {0};
+  static __thread uint8_t selectedCNAlgoOutput[6] = {0};
 
   getAlgoString(input + 4, 64, selectedAlgoOutput, 15);
   if (cn > 19) {
@@ -407,32 +408,29 @@ void gr_hash(void *output, const void *input, uint8_t cn) {
   // First phasee uses full 80 bytes. Ther rest usees shorter 64 bytes.
   doCoreAlgo(selectedAlgoOutput[0], input, hash_1, 80);
   doCoreAlgo(selectedAlgoOutput[1], hash_1, hash_2, 64);
-  free(hash_1);
-  hash_1 = hash_2;
-  doCoreAlgo(selectedAlgoOutput[2], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[2], hash_2, hash_1, 64);
   doCoreAlgo(selectedAlgoOutput[3], hash_1, hash_2, 64);
-  doCoreAlgo(selectedAlgoOutput[4], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[4], hash_2, hash_1, 64);
   doCNAlgo(selectedCNAlgoOutput[0], hash_1, hash_2, 64);
   memset(hash_2 + 32, 0, 32);
 
-  doCoreAlgo(selectedAlgoOutput[5], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[5], hash_2, hash_1, 64);
   doCoreAlgo(selectedAlgoOutput[6], hash_1, hash_2, 64);
-  doCoreAlgo(selectedAlgoOutput[7], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[7], hash_2, hash_1, 64);
   doCoreAlgo(selectedAlgoOutput[8], hash_1, hash_2, 64);
-  doCoreAlgo(selectedAlgoOutput[9], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[9], hash_2, hash_1, 64);
   doCNAlgo(selectedCNAlgoOutput[1], hash_1, hash_2, 64);
   memset(hash_2 + 32, 0, 32);
 
-  doCoreAlgo(selectedAlgoOutput[10], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[10], hash_2, hash_1, 64);
   doCoreAlgo(selectedAlgoOutput[11], hash_1, hash_2, 64);
-  doCoreAlgo(selectedAlgoOutput[12], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[12], hash_2, hash_1, 64);
   doCoreAlgo(selectedAlgoOutput[13], hash_1, hash_2, 64);
-  doCoreAlgo(selectedAlgoOutput[14], hash_1, hash_2, 64);
+  doCoreAlgo(selectedAlgoOutput[14], hash_2, hash_1, 64);
   doCNAlgo(selectedCNAlgoOutput[2], hash_1, hash_2, 64);
-  memset(hash_2 + 32, 0, 32);
+  // memset(hash_2 + 32, 0, 32);
 
   memcpy(output, hash_2, 32);
-  free(hash_1);
 }
 
 int scanhash_gr(struct work *work, uint32_t max_nonce, uint64_t *hashes_done,
