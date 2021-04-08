@@ -18,7 +18,6 @@
 #include "../whirlpool/sph_whirlpool.h"
 #include "cryptonote/crypto/c_keccak.h"
 #include "cryptonote/crypto/hash.h"
-#include "cryptonote/cryptonight.h"
 #include "cryptonote/cryptonight_dark.h"
 #include "cryptonote/cryptonight_dark_lite.h"
 #include "cryptonote/cryptonight_fast.h"
