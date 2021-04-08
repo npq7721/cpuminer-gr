@@ -240,16 +240,21 @@ static void gr_bench(int type, int algo, void *input, double time, int cn) {
   struct timeval start, end, diff;
   double elapsed, hashes = 0;
   gettimeofday(&start, NULL);
+  static __thread uint32_t nonce = 0;
   do {
     uint32_t hash[64 / 4];
     if (type == 3) {
       static __thread int rot = 0;
+      be32enc((uint32_t *)&input[76], nonce);
       gr_hash(hash, input, rot++);
       if (rot == 20) {
         rot = 0;
       }
+      ++nonce;
     } else if (type == 2) {
+      be32enc((uint32_t *)&input[76], nonce);
       gr_hash(hash, input, cn);
+      ++nonce;
     } else if (type == 1) {
       doCoreAlgo(algo, input, hash, 64);
     } else if (type == 0) {
