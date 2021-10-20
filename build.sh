@@ -28,7 +28,7 @@ if [[ $(uname -m) =~ "armv7" ]]; then
   fi
 elif [[ $(uname -m) =~ "aarch64" ]]; then
   echo "Detected ARMv8 (aarch64) system" | tee -a build.log
-  ARCH="armv8-a"
+  ARCH="armv8-a+simd"
 else
   echo "Architecture $(uname -m). Compile as native" | tee -a build.log
   ARCH="native"
