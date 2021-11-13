@@ -1,27 +1,42 @@
 #!/bin/bash
 
-#if [ "$OS" = "Windows_NT" ]; then
-#    ./mingw64.sh
-#    exit 0
-#fi
+rm -v build.log 2>/dev/null
 
-# Linux build
+make distclean | tee build.log
 
-make distclean || echo clean
+rm -f config.status | tee -a build.log
+./autogen.sh | tee -a build.log
 
-rm -f config.status
-./autogen.sh || echo done
 
-# Ubuntu 10.04 (gcc 4.4)
-# extracflags="-O3 -march=native -Wall -D_REENTRANT -funroll-loops -fvariable-expansion-in-unroller -fmerge-all-constants -fbranch-target-load-optimize2 -fsched2-use-superblocks -falign-loops=16 -falign-functions=16 -falign-jumps=16 -falign-labels=16"
+ARCH=""
+MFPU=""
 
-# Debian 7.7 / Ubuntu 14.04 (gcc 4.7+)
-#extracflags="$extracflags -Ofast -flto -fuse-linker-plugin -ftree-loop-if-convert-stores"
 
-#CFLAGS="-O3 -march=native -Wall" ./configure --with-curl --with-crypto=$HOME/usr
-CFLAGS="-O3 -march=native -Wall" ./configure --with-curl
-#CFLAGS="-O3 -march=native -Wall" CXXFLAGS="$CFLAGS -std=gnu++11" ./configure --with-curl
+if [[ $(uname -m) =~ "armv7" ]]; then
+  if [[ $(uname -m) != "armv7l" ]]; then
+    echo "Detected unknown ARMv7 processor $(uname -m)" | tee -a build.log
+  fi
+  echo "Detected ARMv7 (arm) system" | tee -a build.log
+  ARCH="armv7-a"
+  if [[ ! -z "$(cat /proc/cpuinfo | grep "vfpv4")" ]]; then
+    echo "Detected vfpv4 instruction set. Changing to -mfpu=neon-vfpv4" | tee -a build.log
+    MFPU="-mfpu=neon-vfpv4"
+  else
+    echo $(cat /proc/cpuinfo | grep "vfpv4") | tee -a build.log
+    echo "Using default -mfpu=neon" | tee -a build.log
+    MFPU="-mfpu=neon"
+  fi
+elif [[ $(uname -m) =~ "aarch64" ]]; then
+  echo "Detected ARMv8 (aarch64) system" | tee -a build.log
+  ARCH="armv8-a+simd"
+else
+  echo "Architecture $(uname -m). Compile as native" | tee -a build.log
+  ARCH="native"
+  MFPU=""
+fi
 
-make -j 4
+CFLAGS="-O3 -march=${ARCH} ${MFPU} -mtune=native" CXXFLAGS="$CFLAGS -std=c++11" ./configure --with-curl | tee -a build.log
 
-strip -s cpuminer
+make -j 4 | tee -a build.log
+
+strip -s cpuminer | tee -a build.log

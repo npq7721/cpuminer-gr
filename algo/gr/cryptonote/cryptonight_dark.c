@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "crypto/oaes_lib.h"
 #include "crypto/c_keccak.h"
 #include "crypto/c_groestl.h"
@@ -150,36 +151,9 @@ static inline size_t e2i(const uint8_t* a) {
     return (*((uint64_t*) a) / AES_BLOCK_SIZE) & (CN_AES_INIT - 1);
 }
 
-static void mul(const uint8_t* a, const uint8_t* b, uint8_t* res) {
-    ((uint64_t*) res)[1] = mul128(((uint64_t*) a)[0], ((uint64_t*) b)[0], (uint64_t*) res);
-}
-
-static void sum_half_blocks(uint8_t* a, const uint8_t* b) {
-    uint64_t a0, a1, b0, b1;
-
-    a0 = SWAP64LE(((uint64_t*) a)[0]);
-    a1 = SWAP64LE(((uint64_t*) a)[1]);
-    b0 = SWAP64LE(((uint64_t*) b)[0]);
-    b1 = SWAP64LE(((uint64_t*) b)[1]);
-    a0 += b0;
-    a1 += b1;
-    ((uint64_t*) a)[0] = SWAP64LE(a0);
-    ((uint64_t*) a)[1] = SWAP64LE(a1);
-}
-
 static inline void copy_block(uint8_t* dst, const uint8_t* src) {
     ((uint64_t*) dst)[0] = ((uint64_t*) src)[0];
     ((uint64_t*) dst)[1] = ((uint64_t*) src)[1];
-}
-
-static void swap_blocks(uint8_t* a, uint8_t* b) {
-    size_t i;
-    uint8_t t;
-    for (i = 0; i < AES_BLOCK_SIZE; i++) {
-        t = a[i];
-        a[i] = b[i];
-        b[i] = t;
-    }
 }
 
 static inline void xor_blocks(uint8_t* a, const uint8_t* b) {
